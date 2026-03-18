@@ -1,14 +1,11 @@
 import { all } from 'redux-saga/effects';
-import authSaga from '../modules/auth/authSaga';
+import authSaga        from '../modules/auth/authSaga';
+import appointmentSaga from '../modules/appointments/appointmentSaga';
 
 export default function* rootSaga() {
   yield all([
     authSaga(),
-    // Future sagas plug in here:
-    // tenantSaga(),
-    // patientSaga(),
-    // appointmentSaga(),
-    // billingSaga(),
-    // notificationSaga(),
+    appointmentSaga(),
+    // Future sagas plug in here
   ]);
 }

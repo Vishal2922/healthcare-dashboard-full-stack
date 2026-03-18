@@ -1,28 +1,12 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-/**
- * authSlice
- *
- * Manages authentication state for the entire app.
- *
- * State shape:
- *   user         → decoded user object from backend
- *                  { id, username, email, full_name, role, permissions, tenant_id }
- *   accessToken  → JWT access token (also in localStorage for refresh flow)
- *   csrfToken    → CSRF token stored in sessionStorage and Redux
- *   isLoggedIn   → boolean
- *   loading      → for login spinner
- *   error        → login error message
- *   initialized  → has the app checked for an existing session on load?
- */
-
 const initialState = {
-  user: null,
+  user:        null,
   accessToken: null,
-  csrfToken: null,
-  isLoggedIn: false,
-  loading: false,
-  error: null,
+  csrfToken:   null,
+  isLoggedIn:  false,
+  loading:     false,
+  error:       null,
   initialized: false,
 };
 
@@ -30,25 +14,28 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // Triggered by component → picked up by authSaga
+
     loginRequest: (state) => {
       state.loading = true;
-      state.error = null;
+      state.error   = null;
     },
 
     loginSuccess: (state, action) => {
       const { access_token, csrf_token, user } = action.payload;
-      state.user = user;
+      state.user        = user;
       state.accessToken = access_token;
-      state.csrfToken = csrf_token;
-      state.isLoggedIn = true;
-      state.loading = false;
-      state.error = null;
+      state.csrfToken   = csrf_token;
+      state.isLoggedIn  = true;
+      state.loading     = false;
+      state.error       = null;
+      // ── FIX: mark initialized immediately on login so AppRouter
+      //    never falls back to <PageLoader /> after the navigate
+      state.initialized = true;
     },
 
     loginFailure: (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
+      state.loading    = false;
+      state.error      = action.payload;
       state.isLoggedIn = false;
     },
 
@@ -57,22 +44,25 @@ const authSlice = createSlice({
     },
 
     logoutSuccess: (state) => {
-      state.user = null;
+      state.user        = null;
       state.accessToken = null;
-      state.csrfToken = null;
-      state.isLoggedIn = false;
-      state.loading = false;
-      state.error = null;
+      state.csrfToken   = null;
+      state.isLoggedIn  = false;
+      state.loading     = false;
+      state.error       = null;
     },
 
-    // Called after successful token refresh
+    // ── FIX: tokenRefreshed MUST set isLoggedIn + user
+    //    otherwise a page-refresh with a valid cookie never restores the session
     tokenRefreshed: (state, action) => {
-      const { access_token, csrf_token } = action.payload;
+      const { access_token, csrf_token, user } = action.payload;
       state.accessToken = access_token;
       if (csrf_token) state.csrfToken = csrf_token;
+      if (user)       state.user      = user;
+      // A successful token refresh means the session is valid
+      state.isLoggedIn = true;
     },
 
-    // App startup: check if a valid session exists (via refresh cookie)
     sessionCheckComplete: (state) => {
       state.initialized = true;
     },
