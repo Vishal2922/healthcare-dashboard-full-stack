@@ -1,6 +1,11 @@
-import { call, put, takeLatest } from 'redux-saga/effects';
-// Using named imports matching your authAPI.js exports
-import { loginAPI, logoutAPI, refreshTokenAPI } from './authAPI'; 
+import {
+  call,
+  put,
+  takeLatest,
+  all,
+} from 'redux-saga/effects';
+
+import { loginAPI, logoutAPI, refreshTokenDirectAPI } from './authAPI';
 import {
   loginRequest,
   loginSuccess,
@@ -11,92 +16,167 @@ import {
   sessionCheckComplete,
 } from './authSlice';
 
-// ─── Login ────────────────────────────────────────────────────────────────────
+import { getIsRefreshing, setIsRefreshing } from '../../services/storeInjector';
+
+
+
+/**
+ * Decode the JWT payload to extract user info (username, role_name, permissions).
+ * This avoids an extra /api/auth/me call during session restoration.
+ */
+function decodeUserFromJwt(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return {
+      id:          payload.sub,
+      username:    payload.username,
+      role:        payload.role_name,
+      role_id:     payload.role_id,
+      tenant_id:   payload.tenant_id,
+      permissions: payload.permissions || [],
+    };
+  } catch (e) {
+    console.warn('[authSaga] Failed to decode JWT:', e.message);
+    return null;
+  }
+}
+
+
+
+function* performSilentRefresh() {
+  if (getIsRefreshing()) {
+    console.info('[authSaga] Skipping proactive refresh — interceptor already refreshing');
+    return { success: true };
+  }
+
+  try {
+    const response = yield call(refreshTokenDirectAPI);
+    const data = response?.data || response;
+    const { access_token, csrf_token, expires_in } = data;
+
+    if (!access_token) {
+      console.warn('[authSaga] Silent refresh returned no access_token');
+      return { success: false, isAuthError: false };
+    }
+
+    localStorage.setItem('access_token', access_token);
+    if (csrf_token) sessionStorage.setItem('csrf_token', csrf_token);
+
+    yield put(tokenRefreshed({ access_token, csrf_token, expires_in }));
+
+    return { success: true, expiresIn: expires_in };
+
+  } catch (error) {
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      console.info('[authSaga] Silent refresh 401 — session expired');
+      return { success: false, isAuthError: true };
+    }
+
+    console.warn('[authSaga] Silent refresh non-auth error:', error.message);
+    return { success: false, isAuthError: false };
+  }
+}
+
+
 function* handleLogin(action) {
   try {
     const { username, password } = action.payload;
-    // call the named function directly
     const response = yield call(loginAPI, { username, password });
 
-    // loginAPI already returns response.data (axios-unwrapped).
-    // Backend shape: { status, message, data: { access_token, csrf_token, user } }
-    const payloadData = response?.data || response;
-    const { access_token, csrf_token, user } = payloadData;
+    const data = response?.data || response;
+    const { access_token, csrf_token, expires_in, user } = data;
 
-    // Persist access token (needed by axiosClient refresh flow)
     if (access_token) localStorage.setItem('access_token', access_token);
+    if (csrf_token)   sessionStorage.setItem('csrf_token', csrf_token);
 
-    // Persist CSRF token in sessionStorage
-    if (csrf_token) sessionStorage.setItem('csrf_token', csrf_token);
+    yield put(loginSuccess({ access_token, csrf_token, expires_in, user }));
 
-    yield put(loginSuccess({ access_token, csrf_token, user }));
   } catch (error) {
     const message =
       error.response?.data?.message ||
-      error.response?.data?.error ||
+      error.response?.data?.error   ||
       'Login failed. Please check your credentials.';
     yield put(loginFailure(message));
   }
 }
 
-// ─── Logout ───────────────────────────────────────────────────────────────────
 function* handleLogout() {
   try {
-    // call the named function directly
     yield call(logoutAPI);
   } catch (error) {
-    // Best-effort logout — clear client state regardless of server response
-    console.warn("Server logout failed, clearing local session anyway.", error.message);
+    console.warn('[authSaga] Server logout failed — clearing local session:', error.message);
   } finally {
     localStorage.removeItem('access_token');
     sessionStorage.removeItem('csrf_token');
+    setIsRefreshing(false);
     yield put(logoutSuccess());
   }
 }
 
-// ─── Session Check (on app mount) ─────────────────────────────────────────────
 function* handleSessionCheck() {
   try {
-    // 1. SHORT-CIRCUIT: If we don't have an access token, don't ask the backend.
-    // This prevents the automatic 401 console error when the app first loads.
     const storedToken = localStorage.getItem('access_token');
+
     if (!storedToken) {
       yield put(logoutSuccess());
-      yield put(sessionCheckComplete());
       return;
     }
 
-    // 2. We have a token, attempt to refresh it silently
-    const response = yield call(refreshTokenAPI);
+    console.info('[authSaga] Session check: trying silent refresh...');
+    const result = yield call(performSilentRefresh);
 
-    // refreshTokenAPI returns response.data (axios-unwrapped).
-    // Backend shape: { status, message, data: { access_token, csrf_token } }
-    const payloadData = response?.data || response;
-    const { access_token, csrf_token, user } = payloadData;
+    if (result.success) {
+      console.info('[authSaga] Session check: session restored');
 
-    if (access_token) localStorage.setItem('access_token', access_token);
-    if (csrf_token) sessionStorage.setItem('csrf_token', csrf_token);
+      // Decode user info from the refreshed JWT so the UI has
+      // the username, role, and permissions (without an extra /me call).
+      const freshToken = localStorage.getItem('access_token');
+      const user = decodeUserFromJwt(freshToken);
 
-    yield put(tokenRefreshed({ access_token, csrf_token, user }));
-  } catch (error) {
-    // Gracefully handle the expected 401 when the refresh token has expired
-    if (error.response && error.response.status === 401) {
-      // Clear any stale data just to be safe
+      if (user) {
+        // Use loginSuccess so that state.user is populated —
+        // tokenRefreshed alone leaves user as null, which breaks
+        // the Header, RoleBasedRoute, and any useAuth() consumers.
+        yield put(loginSuccess({
+          access_token: freshToken,
+          csrf_token:   sessionStorage.getItem('csrf_token'),
+          expires_in:   result.expiresIn ?? 10,
+          user,
+        }));
+      }
+
+    } else if (result.isAuthError) {
+      console.info('[authSaga] Session check: refresh token expired');
       localStorage.removeItem('access_token');
       sessionStorage.removeItem('csrf_token');
-      // Dispatch logout success to put the Redux state in a clean logged-out status
       yield put(logoutSuccess());
+
     } else {
-      console.error("Session check failed with an unexpected error:", error);
+      console.warn('[authSaga] Session check: network error — treating as logged out');
+      localStorage.removeItem('access_token');
+      yield put(logoutSuccess());
     }
+
+  } catch (unexpected) {
+    console.error('[authSaga] Session check unexpected error:', unexpected);
+    localStorage.removeItem('access_token');
+    sessionStorage.removeItem('csrf_token');
+    setIsRefreshing(false);
+    yield put(logoutSuccess());
+
   } finally {
     yield put(sessionCheckComplete());
   }
 }
 
-// ─── Root Auth Saga ───────────────────────────────────────────────────────────
 export default function* authSaga() {
-  yield takeLatest(loginRequest.type, handleLogin);
-  yield takeLatest(logoutRequest.type, handleLogout);
-  yield takeLatest('auth/sessionCheck', handleSessionCheck);
+  yield all([
+    takeLatest(loginRequest.type,   handleLogin),
+    takeLatest(logoutRequest.type,  handleLogout),
+    takeLatest('auth/sessionCheck', handleSessionCheck),
+  ]);
 }
