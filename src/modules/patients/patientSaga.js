@@ -58,6 +58,15 @@ const ONLINE_POLL_INTERVAL   = 5000; // ms
 const errMsg = (error, fallback) =>
   error?.response?.data?.message || error?.message || fallback;
 
+const mapPatient = (p) => {
+  if (!p) return p;
+  return {
+    ...p,
+    full_name: p.name || p.full_name,
+    dob: p.date_of_birth || p.dob,
+  };
+};
+
 // ════════════════════════════════════════════════════════════════════════════
 // 1. FETCH PATIENT LIST
 // ════════════════════════════════════════════════════════════════════════════
@@ -75,11 +84,19 @@ function* handleFetchPatients(action) {
 
     const response = yield call(fetchPatientListAPI, params);
     const payload  = response?.data || response;
+    
+    // Backend returns { patients: [...], pagination: { total, page, per_page, total_pages } }
+    const rawPatients = payload.patients || payload.data || [];
+    const mappedPatients = rawPatients.map(p => ({
+      ...p,
+      full_name: p.name || p.full_name,
+      dob: p.date_of_birth || p.dob,
+    }));
 
     yield put(
       fetchPatientsSuccess({
-        data: payload.data ?? payload,
-        meta: payload.meta ?? {
+        data: mappedPatients,
+        meta: payload.pagination ?? payload.meta ?? {
           total:     payload.total     ?? 0,
           page:      params.page,
           per_page:  params.per_page,
@@ -98,7 +115,8 @@ function* handleFetchPatients(action) {
 function* handleFetchPatientById(action) {
   try {
     const response = yield call(fetchPatientByIdAPI, action.payload);
-    const patient  = response?.data?.patient ?? response?.data ?? response;
+    const rawPatient = response?.data?.patient ?? response?.data ?? response;
+    const patient = mapPatient(rawPatient);
     yield put(fetchPatientByIdSuccess(patient));
   } catch (error) {
     yield put(fetchPatientByIdFailure(errMsg(error, 'Failed to load patient details.')));
@@ -127,7 +145,8 @@ function* handleCreatePatient(action) {
 
   try {
     const response = yield call(createPatientAPI, action.payload);
-    const patient  = response?.data?.patient ?? response?.data ?? response;
+    const rawPatient = response?.data?.patient ?? response?.data ?? response;
+    const patient = mapPatient(rawPatient);
     yield put(createPatientSuccess(patient));
     // Refresh list after create so new record appears at top
     yield put(fetchPatientsRequest({ page: 1 }));
@@ -158,7 +177,8 @@ function* handleUpdatePatient(action) {
 
   try {
     const response = yield call(updatePatientAPI, action.payload);
-    const patient  = response?.data?.patient ?? response?.data ?? response;
+    const rawPatient = response?.data?.patient ?? response?.data ?? response;
+    const patient = mapPatient(rawPatient);
     yield put(updatePatientSuccess(patient));
   } catch (error) {
     yield put(updatePatientFailure(errMsg(error, 'Failed to update patient.')));
@@ -230,13 +250,13 @@ function* flushOfflineQueue() {
 
     try {
       if (item.type === 'create') {
-        const res     = yield call(createPatientAPI, item.payload);
-        const patient = res?.data?.patient ?? res?.data ?? res;
-        yield put(createPatientSuccess(patient));
+        const res = yield call(createPatientAPI, item.payload);
+        const rawPatient = res?.data?.patient ?? res?.data ?? res;
+        yield put(createPatientSuccess(mapPatient(rawPatient)));
       } else if (item.type === 'update') {
-        const res     = yield call(updatePatientAPI, item.payload);
-        const patient = res?.data?.patient ?? res?.data ?? res;
-        yield put(updatePatientSuccess(patient));
+        const res = yield call(updatePatientAPI, item.payload);
+        const rawPatient = res?.data?.patient ?? res?.data ?? res;
+        yield put(updatePatientSuccess(mapPatient(rawPatient)));
       } else if (item.type === 'delete') {
         yield call(deletePatientAPI, item.payload);
         yield put(deletePatientSuccess(item.payload));

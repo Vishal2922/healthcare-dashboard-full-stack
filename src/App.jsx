@@ -2,14 +2,10 @@ import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import store from './app/store';
 import AppRouter from './routes/AppRouter';
+import { setStore } from './services/storeInjector';
 
-/**
- * BrowserRouter must live HERE — outside AppRouter.
- * AppRouter uses useEffect + useSelector which need both
- * the Redux Provider AND the Router context to be stable.
- * If BrowserRouter is inside AppRouter, navigation fired
- * by sagas gets lost when AppRouter re-renders.
- */
+setStore(store);
+
 export default function App() {
   return (
     <Provider store={store}>

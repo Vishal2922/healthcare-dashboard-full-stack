@@ -451,6 +451,14 @@ export default function LoginPage() {
 
   const usernameRef = useRef(null);
 
+  // Tenant detection
+  const host = window.location.hostname;
+  const rootDomain = process.env.REACT_APP_APP_DOMAIN || 'localhost';
+  const tenantCode =
+    host !== rootDomain && host.endsWith(`.${rootDomain}`)
+      ? host.replace(`.${rootDomain}`, '')
+      : null;
+
   // Redirect after successful login based on role
   useEffect(() => {
     if (isLoggedIn) {
@@ -534,11 +542,23 @@ export default function LoginPage() {
               <WelcomeLabel>Staff portal</WelcomeLabel>
               <FormTitle>Sign in</FormTitle>
               <FormSubtitle>
-                Use your staff credentials to access your workspace.
+                {tenantCode
+                  ? 'Use your staff credentials to access your workspace.'
+                  : 'Workspace not found. Please navigate to your clinic\'s domain.'}
               </FormSubtitle>
             </FormHeader>
 
-            <Form onSubmit={handleSubmit} noValidate>
+            {!tenantCode ? (
+              <ErrorAlert role="alert">
+                <ErrorIconWrap>
+                  <CloseOutlined />
+                </ErrorIconWrap>
+                <ErrorText>
+                  Direct login from the root domain is not permitted. Please access your personalized clinic login page (e.g., <strong>yourclinic.{rootDomain}</strong>).
+                </ErrorText>
+              </ErrorAlert>
+            ) : (
+              <Form onSubmit={handleSubmit} noValidate>
               {/* Error alert */}
               {error && (
                 <ErrorAlert role="alert">
@@ -621,6 +641,7 @@ export default function LoginPage() {
                 JWT · CSRF protected · AES-256 encrypted
               </FormFooter>
             </Form>
+            )}
           </FormCard>
         </FormArea>
       </Page>

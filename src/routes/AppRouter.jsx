@@ -33,30 +33,24 @@ export default function AppRouter() {
   const isLoggedIn  = useSelector(selectIsLoggedIn);
   const initialized = useSelector(selectAuthInitialized);
 
-  // On mount: silently attempt token refresh to restore session from cookie
   useEffect(() => {
     dispatch({ type: 'auth/sessionCheck' });
   }, [dispatch]);
 
-  // Idle logout after 15 minutes of inactivity
   useIdleLogout(isLoggedIn);
 
-  // Block rendering ONLY until the initial session check is done.
-  // Once initialized, we never block again — even if isLoggedIn changes.
   if (!initialized) return <PageLoader />;
 
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
 
-        {/* ── Public ── */}
         <Route
           path="/login"
           element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <LoginPage />}
         />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* ── Protected (any authenticated role) ── */}
         <Route element={<ProtectedRoute />}>
 
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -86,7 +80,6 @@ export default function AppRouter() {
 
         </Route>
 
-        {/* ── Fallback ── */}
         <Route path="/"  element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
         <Route path="*"  element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
 

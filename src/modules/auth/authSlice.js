@@ -1,13 +1,14 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  user:        null,
-  accessToken: null,
-  csrfToken:   null,
-  isLoggedIn:  false,
-  loading:     false,
-  error:       null,
-  initialized: false,
+  user:           null,
+  accessToken:    null,
+  csrfToken:      null,
+  tokenExpiresIn: null,
+  isLoggedIn:     false,
+  loading:        false,
+  error:          null,
+  initialized:    false,
 };
 
 const authSlice = createSlice({
@@ -21,16 +22,15 @@ const authSlice = createSlice({
     },
 
     loginSuccess: (state, action) => {
-      const { access_token, csrf_token, user } = action.payload;
-      state.user        = user;
-      state.accessToken = access_token;
-      state.csrfToken   = csrf_token;
-      state.isLoggedIn  = true;
-      state.loading     = false;
-      state.error       = null;
-      // ── FIX: mark initialized immediately on login so AppRouter
-      //    never falls back to <PageLoader /> after the navigate
-      state.initialized = true;
+      const { access_token, csrf_token, user, expires_in } = action.payload;
+      state.user           = user;
+      state.accessToken    = access_token;
+      state.csrfToken      = csrf_token;
+      state.tokenExpiresIn = expires_in ?? null;
+      state.isLoggedIn     = true;
+      state.loading        = false;
+      state.error          = null;
+      state.initialized    = true;
     },
 
     loginFailure: (state, action) => {
@@ -44,22 +44,20 @@ const authSlice = createSlice({
     },
 
     logoutSuccess: (state) => {
-      state.user        = null;
-      state.accessToken = null;
-      state.csrfToken   = null;
-      state.isLoggedIn  = false;
-      state.loading     = false;
-      state.error       = null;
+      state.user           = null;
+      state.accessToken    = null;
+      state.csrfToken      = null;
+      state.tokenExpiresIn = null;
+      state.isLoggedIn     = false;
+      state.loading        = false;
+      state.error          = null;
     },
 
-    // ── FIX: tokenRefreshed MUST set isLoggedIn + user
-    //    otherwise a page-refresh with a valid cookie never restores the session
     tokenRefreshed: (state, action) => {
-      const { access_token, csrf_token, user } = action.payload;
-      state.accessToken = access_token;
-      if (csrf_token) state.csrfToken = csrf_token;
-      if (user)       state.user      = user;
-      // A successful token refresh means the session is valid
+      const { access_token, csrf_token, expires_in } = action.payload;
+      state.accessToken    = access_token;
+      if (csrf_token)  state.csrfToken      = csrf_token;
+      if (expires_in)  state.tokenExpiresIn = expires_in;
       state.isLoggedIn = true;
     },
 

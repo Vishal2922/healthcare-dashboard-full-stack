@@ -311,6 +311,22 @@ export default function PatientList() {
   const [searchText,   setSearchText]   = useState('');
   const debouncedSearch = useDebounce(searchText, 400);
 
+  const {
+    patientList = [], meta = { page: 1, per_page: 10, total: 0 },
+    filters = {}, listLoading = false, formLoading = false,
+    error = null, successMessage = null, isOnline = true, 
+    pendingCount = 0, isFlushing = false, canDelete = false,
+    fetchPatients, createPatient, updatePatient, deletePatient,
+    applyFilters, clearFilters, dismissError, dismissSuccess,
+  } = pts;
+
+  // ── Search debounce ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!applyFilters) return;
+    applyFilters({ search: debouncedSearch });
+    dispatch(fetchPatientsRequest({ page: 1, filters: { search: debouncedSearch } }));
+  }, [debouncedSearch, applyFilters, dispatch]);
+
   // ── Access guard ────────────────────────────────────────────────────────────
   if (pts.accessDenied) {
     return (
@@ -325,20 +341,6 @@ export default function PatientList() {
       </PageWrapper>
     );
   }
-
-  const {
-    patientList, meta, filters, listLoading, formLoading,
-    error, successMessage, isOnline, pendingCount, isFlushing,
-    canDelete,
-    fetchPatients, createPatient, updatePatient, deletePatient,
-    applyFilters, clearFilters, dismissError, dismissSuccess,
-  } = pts;
-
-  // ── Search debounce ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    applyFilters({ search: debouncedSearch });
-    dispatch(fetchPatientsRequest({ page: 1, filters: { search: debouncedSearch } }));
-  }, [debouncedSearch]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleOpenCreate = () => { setEditTarget(null); setDrawerOpen(true); };

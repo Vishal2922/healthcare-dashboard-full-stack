@@ -31,17 +31,34 @@ export const fetchPatientByIdAPI = async (id) => {
 
 // ─── Create ──────────────────────────────────────────────────────────────────
 export const createPatientAPI = async (payload) => {
-  // payload: { full_name, dob, gender, phone, email, address, blood_group, ... }
-  const response = await axiosClient.post('/api/patients', payload);
+  const backendPayload = {
+    ...payload,
+    name: payload.full_name,
+    medical_history: [
+      payload.allergies ? `Allergies: ${payload.allergies}` : '',
+      payload.chronic_conditions ? `Chronic: ${payload.chronic_conditions}` : '',
+      payload.current_medications ? `Medications: ${payload.current_medications}` : '',
+      payload.notes ? `Notes: ${payload.notes}` : ''
+    ].filter(Boolean).join('\n') || 'None',
+  };
+  const response = await axiosClient.post('/api/patients', backendPayload);
   return response.data;
-  // shape: { status, message, data: { patient } }
 };
 
 // ─── Update ──────────────────────────────────────────────────────────────────
 export const updatePatientAPI = async ({ id, ...payload }) => {
-  const response = await axiosClient.put(`/api/patients/${id}`, payload);
+  const backendPayload = {
+    ...payload,
+    name: payload.full_name,
+    medical_history: [
+      payload.allergies ? `Allergies: ${payload.allergies}` : '',
+      payload.chronic_conditions ? `Chronic: ${payload.chronic_conditions}` : '',
+      payload.current_medications ? `Medications: ${payload.current_medications}` : '',
+      payload.notes ? `Notes: ${payload.notes}` : ''
+    ].filter(Boolean).join('\n') || 'None',
+  };
+  const response = await axiosClient.put(`/api/patients/${id}`, backendPayload);
   return response.data;
-  // shape: { status, message, data: { patient } }
 };
 
 // ─── Delete (Admin only — backend enforces) ───────────────────────────────────
