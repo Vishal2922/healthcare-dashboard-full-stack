@@ -1,25 +1,17 @@
 import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom';
 import store from './app/store';
 import AppRouter from './routes/AppRouter';
+import { setStore } from './services/storeInjector';
 
-/**
- * App
- *
- * Root of the application.
- * - Redux Provider wraps everything (store has auth + future modules)
- * - AppRouter handles all routing, session check, idle logout
- *
- * Styled-components ThemeProvider for multi-tenant theming will be
- * inserted here once the tenant module is ready:
- *
- *   <ThemeProvider theme={tenantTheme}>
- *     <AppRouter />
- *   </ThemeProvider>
- */
+setStore(store);
+
 export default function App() {
   return (
     <Provider store={store}>
-      <AppRouter />
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AppRouter />
+      </BrowserRouter>
     </Provider>
   );
 }
