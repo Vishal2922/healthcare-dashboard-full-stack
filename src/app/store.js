@@ -1,19 +1,22 @@
 import { configureStore } from '@reduxjs/toolkit';
 import createSagaMiddleware from 'redux-saga';
 import authReducer from '../modules/auth/authSlice';
+import userReducer from '../modules/users/userSlice';
+import staffReducer from '../modules/staff/staffSlice';
 import rootSaga from './rootSaga';
 
 const sagaMiddleware = createSagaMiddleware();
 
 const store = configureStore({
   reducer: {
-    auth: authReducer,
-    // Future modules plug in here:
-    // tenant:       tenantReducer,
-    // patients:     patientReducer,
-    // appointments: appointmentReducer,
-    // billing:      billingReducer,
-    // notifications:notificationReducer,
+    auth:  authReducer,
+    users: userReducer,
+    staff: staffReducer,
+    // tenant:        tenantReducer,
+    // patients:      patientReducer,
+    // appointments:  appointmentReducer,
+    // billing:       billingReducer,
+    // notifications: notificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ thunk: false }).concat(sagaMiddleware),
