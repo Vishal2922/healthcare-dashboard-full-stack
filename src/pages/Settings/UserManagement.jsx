@@ -6,6 +6,7 @@ import {
   CloseOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import useUsers from '../../modules/users/hooks/useUsers';
+import usePermission from '../../hooks/usePermission';
 
 const fadeUp = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`;
 const spin   = keyframes`to{transform:rotate(360deg)}`;
@@ -39,8 +40,8 @@ const Avatar      = styled.div`width:34px;height:34px;border-radius:50%;backgrou
 const AvatarName  = styled.div`font-weight:500;font-size:14px;color:#0e1b2a;`;
 const AvatarSub   = styled.div`font-size:12px;color:#718096;`;
 const ActionRow   = styled.div`display:flex;align-items:center;gap:8px;`;
-const Overlay     = styled.div`position:fixed;inset:0;background:rgba(14,27,42,0.45);display:flex;align-items:center;justify-content:center;z-index:999;padding:1rem;`;
-const ModalCard   = styled.div`background:white;border-radius:16px;padding:2rem;width:100%;max-width:480px;animation:${fadeUp} 0.3s ease both;`;
+const Overlay     = styled.div`position:fixed;inset:0;background:rgba(14,27,42,0.45);display:flex;align-items:flex-start;justify-content:center;z-index:999;padding:24px 16px;overflow-y:auto;`;
+const ModalCard   = styled.div`background:white;border-radius:16px;padding:2rem;width:100%;max-width:480px;animation:${fadeUp} 0.3s ease both;margin:auto;`;
 const ModalTitle  = styled.h2`font-size:18px;font-weight:600;color:#0e1b2a;margin:0 0 1.5rem;`;
 const FormGrid    = styled.div`display:flex;flex-direction:column;gap:16px;margin-bottom:1.5rem;`;
 const FieldLabel  = styled.label`display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#4a5568;margin-bottom:6px;`;
@@ -54,7 +55,12 @@ const PageBtn     = styled.button`width:32px;height:32px;border:1.5px solid ${({
 
 const getInitials = (name='') => name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()||'?';
 const roleBadgeVariant = (role='') => { const r=role.toLowerCase(); if(r==='admin')return'admin'; if(r==='provider'||r==='doctor')return'provider'; return'default'; };
-const EMPTY_FORM = { user_id:'', role_id:'', department:'', specialization:'', hire_date:'', status:'active' };
+const EMPTY_FORM = {
+  // user account fields (create only)
+  username: '', full_name: '', email: '', password: '',
+  // staff profile fields
+  role_id: '', department: '', specialization: '', hire_date: '', status: 'active',
+};
 
 export default function UserManagement() {
   const {
@@ -63,6 +69,13 @@ export default function UserManagement() {
     fetchUsers, createUser, updateUser, deleteUser, toggleStatus,
     fetchRoles, fetchDepartments, dismissError,
   } = useUsers();
+
+  const { can } = usePermission();
+
+  // ── RBAC flags ─────────────────────────────────────────────────────────────
+  const canCreate = can('users', 'create');
+  const canEdit   = can('users', 'edit');
+  const canDelete = can('users', 'delete');
 
   const [search,       setSearch]       = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -103,7 +116,7 @@ export default function UserManagement() {
     <Page>
       <PageHeader>
         <PageTitle><TitleIcon><TeamOutlined /></TitleIcon>User Management</PageTitle>
-        <PrimaryBtn onClick={openCreate}><UserAddOutlined />Add Staff Member</PrimaryBtn>
+        {canCreate && <PrimaryBtn onClick={openCreate}><UserAddOutlined />Add Staff Member</PrimaryBtn>}
       </PageHeader>
 
       {error && (
@@ -164,12 +177,17 @@ export default function UserManagement() {
                   </Td>
                   <Td>
                     <ActionRow>
-                      <IconBtn title="Edit" onClick={()=>openEdit(user)}><EditOutlined /></IconBtn>
-                      {status==='active'
-                        ? <DangerBtn disabled={submitting} onClick={()=>handleToggle(user)}><StopOutlined />Deactivate</DangerBtn>
-                        : <SuccessBtn disabled={submitting} onClick={()=>handleToggle(user)}><CheckCircleOutlined />Activate</SuccessBtn>
-                      }
-                      <IconBtn title="Delete" style={{color:'#c53030',borderColor:'#fed7d7'}} onClick={()=>openDelete(user.id)}><DeleteOutlined /></IconBtn>
+                      {canEdit && (
+                        <IconBtn title="Edit" onClick={()=>openEdit(user)}><EditOutlined /></IconBtn>
+                      )}
+                      {canEdit && (
+                        status==='active'
+                          ? <DangerBtn disabled={submitting} onClick={()=>handleToggle(user)}><StopOutlined />Deactivate</DangerBtn>
+                          : <SuccessBtn disabled={submitting} onClick={()=>handleToggle(user)}><CheckCircleOutlined />Activate</SuccessBtn>
+                      )}
+                      {canDelete && (
+                        <IconBtn title="Delete" style={{color:'#c53030',borderColor:'#fed7d7'}} onClick={()=>openDelete(user.id)}><DeleteOutlined /></IconBtn>
+                      )}
                     </ActionRow>
                   </Td>
                 </Tr>
@@ -198,12 +216,25 @@ export default function UserManagement() {
             <ModalTitle>{modal==='create'?'Add Staff Member':'Edit Staff Record'}</ModalTitle>
             <form onSubmit={handleSubmit}>
               <FormGrid>
-                {modal==='create' && (
+                {modal==='create' && (<>
                   <div>
-                    <FieldLabel htmlFor="user_id">User ID *</FieldLabel>
-                    <FieldInput id="user_id" type="number" placeholder="Existing user ID" value={form.user_id} onChange={e=>setForm({...form,user_id:e.target.value})} required />
+                    <FieldLabel htmlFor="full_name">Full Name *</FieldLabel>
+                    <FieldInput id="full_name" placeholder="e.g. Dr. Jane Smith" value={form.full_name} onChange={e=>setForm({...form,full_name:e.target.value})} required />
                   </div>
-                )}
+                  <div>
+                    <FieldLabel htmlFor="username">Username *</FieldLabel>
+                    <FieldInput id="username" placeholder="e.g. jane.smith" value={form.username} onChange={e=>setForm({...form,username:e.target.value})} required />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor="email">Email *</FieldLabel>
+                    <FieldInput id="email" type="email" placeholder="e.g. jane@clinic.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required />
+                  </div>
+                  <div>
+                    <FieldLabel htmlFor="password">Password *</FieldLabel>
+                    <FieldInput id="password" type="password" placeholder="Min 8 chars, upper+lower+number+symbol" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required minLength={8} />
+                    <div style={{fontSize:11,color:'#a0aab4',marginTop:4}}>Must include uppercase, lowercase, number and a special character (@$!%*?&)</div>
+                  </div>
+                </>)}
                 <div>
                   <FieldLabel htmlFor="role_id">Role</FieldLabel>
                   <FieldSelect id="role_id" value={form.role_id} onChange={e=>setForm({...form,role_id:e.target.value})}>

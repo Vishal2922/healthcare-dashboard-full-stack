@@ -5,8 +5,7 @@ import { useNavigate } from 'react-router-dom';
 export default function InvoicePage() {
   const navigate = useNavigate();
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: '#f7f5f0' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px' }}>
       <Result
         icon={<span style={{ fontSize: 64 }}>💳</span>}
         title="Billing & Invoices"

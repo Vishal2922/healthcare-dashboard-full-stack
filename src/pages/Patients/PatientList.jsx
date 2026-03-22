@@ -41,6 +41,7 @@ import {
 import usePatients from '../../modules/patients/hooks/usePatients';
 import { fetchPatientsRequest } from '../../modules/patients/patientSlice';
 import useDebounce from '../../hooks/useDebounce';
+import usePermission from '../../hooks/usePermission';
 import PatientFormDrawer from '../../components/forms/PatientFormDrawer';
 
 const { Title, Text } = Typography;
@@ -50,7 +51,7 @@ const { Option } = Select;
 // ─── Styled Components ────────────────────────────────────────────────────────
 const PageWrapper = styled.div`
   padding: 24px;
-  min-height: 100vh;
+
   background: ${({ theme }) => theme.colors?.background || '#f7f5f0'};
 `;
 
@@ -163,7 +164,7 @@ function calcAge(dob) {
 }
 
 // ─── Table Columns ────────────────────────────────────────────────────────────
-function buildColumns({ navigate, onEdit, onDelete, canDelete, formLoading }) {
+function buildColumns({ navigate, onEdit, onDelete, canEdit, canDelete, formLoading }) {
   return [
     {
       title: 'Patient',
@@ -261,13 +262,15 @@ function buildColumns({ navigate, onEdit, onDelete, canDelete, formLoading }) {
               >
                 View Profile
               </Menu.Item>
-              <Menu.Item
-                key="edit"
-                icon={<EditOutlined />}
-                onClick={() => onEdit(record)}
-              >
-                Edit
-              </Menu.Item>
+              {canEdit && (
+                <Menu.Item
+                  key="edit"
+                  icon={<EditOutlined />}
+                  onClick={() => onEdit(record)}
+                >
+                  Edit
+                </Menu.Item>
+              )}
               {canDelete && (
                 <>
                   <Menu.Divider />
@@ -305,6 +308,12 @@ export default function PatientList() {
   const dispatch  = useDispatch();
   const navigate  = useNavigate();
   const pts       = usePatients();
+  const { can }   = usePermission();
+
+  // ── RBAC flags (from permissions.js) ─────────────────────────────────────
+  const canCreate = can('patients', 'create');
+  const canEdit   = can('patients', 'edit');
+  const canDelete = can('patients', 'delete');
 
   const [drawerOpen,   setDrawerOpen]   = useState(false);
   const [editTarget,   setEditTarget]   = useState(null);
@@ -315,7 +324,7 @@ export default function PatientList() {
     patientList = [], meta = { page: 1, per_page: 10, total: 0 },
     filters = {}, listLoading = false, formLoading = false,
     error = null, successMessage = null, isOnline = true, 
-    pendingCount = 0, isFlushing = false, canDelete = false,
+    pendingCount = 0, isFlushing = false,
     fetchPatients, createPatient, updatePatient, deletePatient,
     applyFilters, clearFilters, dismissError, dismissSuccess,
   } = pts;
@@ -375,7 +384,7 @@ export default function PatientList() {
 
   const columns = buildColumns({
     navigate, onEdit: handleOpenEdit, onDelete: deletePatient,
-    canDelete, formLoading,
+    canEdit, canDelete, formLoading,
   });
 
   // ── Stats ────────────────────────────────────────────────────────────────────
@@ -442,14 +451,16 @@ export default function PatientList() {
               onClick={() => fetchPatients({ page: meta.page })}
               loading={listLoading} />
           </Tooltip>
-          <Button
-            type="primary"
-            icon={<UserAddOutlined />}
-            onClick={handleOpenCreate}
-            style={{ borderRadius: 8, fontWeight: 600 }}
-          >
-            Register Patient
-          </Button>
+          {canCreate && (
+            <Button
+              type="primary"
+              icon={<UserAddOutlined />}
+              onClick={handleOpenCreate}
+              style={{ borderRadius: 8, fontWeight: 600 }}
+            >
+              Register Patient
+            </Button>
+          )}
         </Space>
       </PageHeader>
 
@@ -531,14 +542,16 @@ export default function PatientList() {
       </TableCard>
 
       {/* ── Drawer ──────────────────────────────────────────────────────────── */}
-      <PatientFormDrawer
-        open={drawerOpen}
-        onClose={handleClose}
-        onSubmit={handleFormSubmit}
-        initialValues={editTarget}
-        loading={formLoading}
-        isOnline={isOnline}
-      />
+      {(canCreate || canEdit) && (
+        <PatientFormDrawer
+          open={drawerOpen}
+          onClose={handleClose}
+          onSubmit={handleFormSubmit}
+          initialValues={editTarget}
+          loading={formLoading}
+          isOnline={isOnline}
+        />
+      )}
     </PageWrapper>
   );
 }

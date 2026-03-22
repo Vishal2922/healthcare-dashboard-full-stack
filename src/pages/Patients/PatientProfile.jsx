@@ -13,6 +13,7 @@ import {
 
 import usePatients from '../../modules/patients/hooks/usePatients';
 import PatientFormDrawer from '../../components/forms/PatientFormDrawer';
+import usePermission from '../../hooks/usePermission';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -20,7 +21,7 @@ const { Title, Text, Paragraph } = Typography;
 const PageWrapper = styled.div`
   padding: 24px;
   background: ${({ theme }) => theme.colors?.background || '#f7f5f0'};
-  min-height: 100vh;
+
 `;
 const ProfileCard = styled(Card)`
   border-radius: 14px; border: none;
@@ -72,6 +73,10 @@ export default function PatientProfile() {
   const { id }   = useParams();
   const navigate = useNavigate();
   const pts      = usePatients();
+  const { can }  = usePermission();
+
+  // ── RBAC flags ─────────────────────────────────────────────────────────────
+  const canEdit = can('patients', 'edit');
 
   // useState — always unconditional
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -233,14 +238,16 @@ export default function PatientProfile() {
             </AvatarWrap>
           </Col>
           <Col>
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => setDrawerOpen(true)}
-              style={{ borderRadius: 8, fontWeight: 600 }}
-            >
-              Edit Patient
-            </Button>
+            {canEdit && (
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() => setDrawerOpen(true)}
+                style={{ borderRadius: 8, fontWeight: 600 }}
+              >
+                Edit Patient
+              </Button>
+            )}
           </Col>
         </Row>
       </ProfileCard>
@@ -274,17 +281,19 @@ export default function PatientProfile() {
       </div>
 
       {/* ── Edit Drawer ───────────────────────────────────────────────────── */}
-      <PatientFormDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSubmit={(values) => {
-          updatePatient({ id: patient.id, ...values });
-          setDrawerOpen(false);
-        }}
-        initialValues={patient}
-        loading={formLoading}
-        isOnline={isOnline}
-      />
+      {canEdit && (
+        <PatientFormDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSubmit={(values) => {
+            updatePatient({ id: patient.id, ...values });
+            setDrawerOpen(false);
+          }}
+          initialValues={patient}
+          loading={formLoading}
+          isOnline={isOnline}
+        />
+      )}
     </PageWrapper>
   );
 }

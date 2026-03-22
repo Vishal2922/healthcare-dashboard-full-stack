@@ -9,7 +9,7 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import DashboardLayout from '../../components/layout/DashboardLayout';
+
 import useAuth from '../../modules/auth/hooks/useAuth';
 import axiosClient from '../../services/axiosClient';
 
@@ -224,7 +224,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     axiosClient.get('/api/dashboard/stats')
-      .then((r) => setStats(r.data?.data ?? r.data))
+      .then((r) => {
+        // Backend response shape:
+        // { status, message, data: { stats: { total_patients, pending_prescriptions, upcoming_appointments }, accessed_by } }
+        const payload = r.data?.data ?? r.data;
+        const s = payload?.stats ?? payload;
+        setStats(s);
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -239,23 +245,23 @@ export default function DashboardPage() {
           iconBg: '#ebf8ff', iconColor: '#2b6cb0',
         },
         {
-          label: "Today's Appointments",
-          value: stats.todays_appointments ?? '—',
-          note: 'Scheduled for today',
+          label: 'Upcoming Appointments',
+          value: stats.upcoming_appointments ?? '—',
+          note: 'Scheduled & awaiting',
           Icon: CalendarOutlined,
           iconBg: '#faf5ff', iconColor: '#805ad5',
         },
         {
-          label: 'Pending Invoices',
-          value: stats.pending_invoices ?? '—',
-          note: 'Awaiting payment',
+          label: 'Pending Prescriptions',
+          value: stats.pending_prescriptions ?? '—',
+          note: 'Awaiting dispensing',
           Icon: ExclamationCircleOutlined,
           iconBg: '#fff3cd', iconColor: '#856404',
         },
         {
-          label: 'Revenue (Month)',
-          value: stats.monthly_revenue != null ? formatCurrency(stats.monthly_revenue) : '—',
-          note: new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+          label: 'Active Staff',
+          value: stats.active_staff ?? '—',
+          note: 'Across all roles',
           Icon: RiseOutlined,
           iconBg: '#f0fff4', iconColor: '#20b486',
         },
@@ -266,8 +272,7 @@ export default function DashboardPage() {
   const recentInvoices     = stats?.recent_invoices ?? [];
 
   return (
-    <DashboardLayout>
-      <Page>
+    <Page>
         <Greeting>{greeting()}, {user?.username} 👋</Greeting>
         <Sub>Here's what's happening at your clinic today.</Sub>
 
@@ -354,7 +359,6 @@ export default function DashboardPage() {
             </div>
           </TwoCol>
         )}
-      </Page>
-    </DashboardLayout>
+    </Page>
   );
 }

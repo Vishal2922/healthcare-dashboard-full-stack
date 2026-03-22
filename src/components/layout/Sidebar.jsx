@@ -9,7 +9,7 @@ import {
   DollarOutlined,
   MedicineBoxOutlined,
   UserOutlined,
-  LockOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import useAuth from '../../modules/auth/hooks/useAuth';
 
@@ -25,16 +25,59 @@ const ROLES = {
 };
 
 const NAV_ITEMS = [
-  { to: '/dashboard',             label: 'Dashboard',    Icon: DashboardOutlined,   roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST] },
-  { to: '/patients',              label: 'Patients',     Icon: TeamOutlined,        roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.NURSE, ROLES.RECEPTIONIST] },
-  { to: '/appointments',          label: 'Appointments', Icon: ScheduleOutlined,    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.NURSE, ROLES.RECEPTIONIST] },
-  { to: '/appointments/calendar', label: 'Calendar',     Icon: CalendarOutlined,    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.NURSE, ROLES.RECEPTIONIST] },
-  { to: '/billing',               label: 'Billing',      Icon: DollarOutlined,      roles: [ROLES.ADMIN, ROLES.PROVIDER] },
-  { to: '/staff',                 label: 'Staff',        Icon: MedicineBoxOutlined, roles: [ROLES.ADMIN] },
-  { to: '/settings/users',        label: 'Users',        Icon: UserOutlined,        roles: [ROLES.ADMIN] },
-  { to: '/settings/security',     label: 'Security',     Icon: LockOutlined,        roles: [ROLES.ADMIN] },
+  {
+    to: '/dashboard',
+    label: 'Dashboard',
+    Icon: DashboardOutlined,
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST],
+  },
+  {
+    to: '/patients',
+    label: 'Patients',
+    Icon: TeamOutlined,
+    roles: [ROLES.PROVIDER, ROLES.NURSE],
+  },
+  {
+    to: '/appointments',
+    label: 'Appointments',
+    Icon: ScheduleOutlined,
+    roles: [ROLES.PROVIDER, ROLES.NURSE],
+  },
+  {
+    to: '/appointments/calendar',
+    label: 'Calendar',
+    Icon: CalendarOutlined,
+    roles: [ROLES.RECEPTIONIST],
+  },
+  {
+    to: '/prescriptions',
+    label: 'Prescriptions',
+    Icon: FileTextOutlined,
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST],
+  },
+  {
+    to: '/billing',
+    label: 'Billing',
+    Icon: DollarOutlined,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    to: '/staff',
+    label: 'Staff',
+    Icon: MedicineBoxOutlined,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    to: '/settings/users',
+    label: 'Users',
+    Icon: UserOutlined,
+    roles: [ROLES.ADMIN],
+  },
 ];
 
+const SETTINGS_PATHS = ['/settings/users'];
+
+// ─── Styled Components ────────────────────────────────────────────────────────
 const Nav = styled.aside`
   position: fixed;
   top: ${HEADER_HEIGHT}px;
@@ -85,9 +128,9 @@ export default function Sidebar({ isOpen }) {
   const { user } = useAuth();
   const role = user?.role;
 
-  const visible = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
-  const mainItems = visible.filter((i) => !['/settings/users', '/settings/security'].includes(i.to));
-  const settingsItems = visible.filter((i) => ['/settings/users', '/settings/security'].includes(i.to));
+  const visible      = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+  const mainItems    = visible.filter((i) => !SETTINGS_PATHS.includes(i.to));
+  const settingsItems= visible.filter((i) => SETTINGS_PATHS.includes(i.to));
 
   return (
     <Nav $open={isOpen}>

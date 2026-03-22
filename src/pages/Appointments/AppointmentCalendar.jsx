@@ -9,10 +9,10 @@ export default function AppointmentCalendar() {
   } = useAppointments();
 
   const today = new Date();
-  const [view, setView]                   = useState('month');
-  const [currentDate, setCurrentDate]     = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [view, setView] = useState('month');
+  const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [showBookModal, setShowBookModal] = useState(false);
-  const [selectedAppt, setSelectedAppt]   = useState(null);
+  const [selectedAppt, setSelectedAppt] = useState(null);
 
   useEffect(() => { loadAppointments({ page: 1, perPage: 100 }); }, [currentDate]); // eslint-disable-line
 
@@ -28,7 +28,7 @@ export default function AppointmentCalendar() {
     if (view === 'month') return currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
     if (view === 'week') {
       const start = getWeekStart(currentDate);
-      const end   = new Date(start); end.setDate(end.getDate() + 6);
+      const end = new Date(start); end.setDate(end.getDate() + 6);
       return `${start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
     }
     return currentDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -44,11 +44,11 @@ export default function AppointmentCalendar() {
   }, [list]);
 
   const STATUS_STYLE = {
-    scheduled:         { bg: '#ebf8ff', border: '#3182ce', text: '#2b6cb0' },
-    arrived:           { bg: '#fffff0', border: '#d69e2e', text: '#975a16' },
+    scheduled: { bg: '#ebf8ff', border: '#3182ce', text: '#2b6cb0' },
+    arrived: { bg: '#fffff0', border: '#d69e2e', text: '#975a16' },
     'in-consultation': { bg: '#faf5ff', border: '#805ad5', text: '#553c9a' },
-    completed:         { bg: '#f0fff4', border: '#38a169', text: '#276749' },
-    cancelled:         { bg: '#fff5f5', border: '#e53e3e', text: '#c53030' },
+    completed: { bg: '#f0fff4', border: '#38a169', text: '#276749' },
+    cancelled: { bg: '#fff5f5', border: '#e53e3e', text: '#c53030' },
   };
 
   const ApptCard = ({ appt }) => {
@@ -57,7 +57,7 @@ export default function AppointmentCalendar() {
       <div
         onClick={(e) => { e.stopPropagation(); setSelectedAppt(appt); }}
         style={{ background: s.bg, borderLeft: `3px solid ${s.border}`, color: s.text, padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', gap: 4, overflow: 'hidden', opacity: appt.status === 'cancelled' ? 0.6 : 1 }}
-        title={`${appt.patient_name || 'Patient'} · ${appt.appointment_time?.slice(11,16)} · ${appt.status}`}
+        title={`${appt.patient_name || 'Patient'} · ${appt.appointment_time?.slice(11, 16)} · ${appt.status}`}
       >
         <span style={{ flexShrink: 0, opacity: 0.8 }}>{appt.appointment_time?.slice(11, 16)}</span>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.patient_name || `#${appt.patient_id}`}</span>
@@ -73,9 +73,9 @@ export default function AppointmentCalendar() {
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push(<div key={`e${i}`} style={S.dayCell} />);
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
-      const appts   = byDate[dateStr] || [];
+      const appts = byDate[dateStr] || [];
       cells.push(
         <div key={dateStr} style={{ ...S.dayCell, background: isToday ? '#ebf8ff' : '#fff', border: isToday ? '1px solid #3182ce' : '1px solid #edf2f7', cursor: 'pointer' }}
           onClick={() => setShowBookModal(true)}>
@@ -89,7 +89,7 @@ export default function AppointmentCalendar() {
     }
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)' }}>
-        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
           <div key={d} style={{ padding: '10px 0', textAlign: 'center', fontWeight: 700, fontSize: 11, color: '#718096', textTransform: 'uppercase', borderBottom: '1px solid #edf2f7', background: '#f7fafc' }}>{d}</div>
         ))}
         {cells}
@@ -105,7 +105,7 @@ export default function AppointmentCalendar() {
         {Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; }).map((d) => {
           const dateStr = d.toISOString().slice(0, 10);
           const isToday = dateStr === todayStr;
-          const appts   = byDate[dateStr] || [];
+          const appts = byDate[dateStr] || [];
           return (
             <div key={dateStr} style={{ borderRight: '1px solid #edf2f7', padding: '8px 6px', background: isToday ? '#ebf8ff' : '#fff' }}>
               <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, marginBottom: 8, color: isToday ? '#3182ce' : '#718096' }}>
@@ -124,7 +124,7 @@ export default function AppointmentCalendar() {
 
   const renderDay = () => {
     const dateStr = currentDate.toISOString().slice(0, 10);
-    const appts   = byDate[dateStr] || [];
+    const appts = byDate[dateStr] || [];
     return (
       <div>
         {Array.from({ length: 10 }, (_, i) => i + 9).map((h) => {
@@ -132,7 +132,7 @@ export default function AppointmentCalendar() {
           return (
             <div key={h} style={{ display: 'flex', borderBottom: '1px solid #edf2f7', minHeight: 60 }}>
               <div style={{ width: 56, padding: '10px 8px', fontSize: 11, fontWeight: 600, color: '#a0aec0', textAlign: 'right', borderRight: '1px solid #edf2f7', flexShrink: 0 }}>
-                {h > 12 ? `${h-12}pm` : h === 12 ? '12pm' : `${h}am`}
+                {h > 12 ? `${h - 12}pm` : h === 12 ? '12pm' : `${h}am`}
               </div>
               <div style={{ flex: 1, padding: '6px 12px', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start' }}>
                 {slotAppts.length === 0
@@ -147,13 +147,13 @@ export default function AppointmentCalendar() {
     );
   };
 
-  const NEXT_STATUSES = { scheduled: ['arrived','cancelled'], arrived: ['in-consultation','cancelled'], 'in-consultation': ['completed','cancelled'] };
+  const NEXT_STATUSES = { scheduled: ['arrived', 'cancelled'], arrived: ['in-consultation', 'cancelled'], 'in-consultation': ['completed', 'cancelled'] };
 
   const DetailPanel = () => {
     if (!selectedAppt) return null;
-    const busy    = isRowLoading(selectedAppt.id);
-    const isFinal = ['completed','cancelled'].includes(selectedAppt.status);
-    const next    = NEXT_STATUSES[selectedAppt.status] || [];
+    const busy = isRowLoading(selectedAppt.id);
+    const isFinal = ['completed', 'cancelled'].includes(selectedAppt.status);
+    const next = NEXT_STATUSES[selectedAppt.status] || [];
     return (
       <div onClick={() => setSelectedAppt(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
         <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, padding: '24px 28px', width: '100%', maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
@@ -208,7 +208,7 @@ export default function AppointmentCalendar() {
           {loading && <span style={{ fontSize: 12, color: '#a0aec0' }}>…</span>}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          {['month','week','day'].map((v) => (
+          {['month', 'week', 'day'].map((v) => (
             <button key={v} onClick={() => setView(v)} style={{ ...S.navBtn, ...(view === v ? { background: '#3182ce', borderColor: '#3182ce', color: '#fff', fontWeight: 700 } : {}) }}>
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
@@ -224,8 +224,8 @@ export default function AppointmentCalendar() {
 
       <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
         {view === 'month' && renderMonth()}
-        {view === 'week'  && renderWeek()}
-        {view === 'day'   && renderDay()}
+        {view === 'week' && renderWeek()}
+        {view === 'day' && renderDay()}
       </div>
 
       <DetailPanel />
@@ -241,14 +241,14 @@ function getWeekStart(date) {
 }
 
 const S = {
-  page:        { padding: '28px 32px', fontFamily: "'DM Sans','Inter',sans-serif", minHeight: '100vh', background: '#f7f5f0' },
-  header:      { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 16 },
-  title:       { margin: 0, fontSize: 26, fontWeight: 800, color: '#1a202c' },
-  subtitle:    { margin: '4px 0 0', fontSize: 14, color: '#718096' },
+  page: { padding: '28px 32px', fontFamily: "'DM Sans','Inter',sans-serif", background: '#f7f5f0' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 16 },
+  title: { margin: 0, fontSize: 26, fontWeight: 800, color: '#1a202c' },
+  subtitle: { margin: '4px 0 0', fontSize: 14, color: '#718096' },
   offlinePill: { background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: '#856404' },
-  drainingPill:{ background: '#e9d8fd', border: '1px solid #805ad5', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: '#553c9a' },
-  bookBtn:     { background: '#3182ce', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
-  toolbar:     { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12, background: '#fff', borderRadius: 10, padding: '12px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
-  navBtn:      { padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#f7fafc', cursor: 'pointer', fontSize: 14, color: '#4a5568' },
-  dayCell:     { minHeight: 100, padding: '6px 8px', boxSizing: 'border-box', borderRight: '1px solid #edf2f7' },
+  drainingPill: { background: '#e9d8fd', border: '1px solid #805ad5', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: '#553c9a' },
+  bookBtn: { background: '#3182ce', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+  toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12, background: '#fff', borderRadius: 10, padding: '12px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
+  navBtn: { padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#f7fafc', cursor: 'pointer', fontSize: 14, color: '#4a5568' },
+  dayCell: { minHeight: 100, padding: '6px 8px', boxSizing: 'border-box', borderRight: '1px solid #edf2f7' },
 };

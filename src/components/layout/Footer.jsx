@@ -12,7 +12,7 @@ const Bar = styled.footer`
   color: #a0aab4;
   border-top: 1px solid #edf2f7;
   background: #fff;
-  margin-top: 40px;
+  margin-top: auto;
 `;
 
 export default function Footer() {

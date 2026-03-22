@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import useAppointments from '../../modules/appointments/hooks/useAppointments';
 import AppointmentForm from '../../components/forms/AppointmentForm';
+import usePermission from '../../hooks/usePermission';
 
 export default function AppointmentList() {
   const {
@@ -9,6 +10,13 @@ export default function AppointmentList() {
     loadAppointments, goToPage, updateStatus, cancelAppointment,
     filterByStatus, isRowLoading, clearError,
   } = useAppointments();
+
+  const { can } = usePermission();
+
+  // ── RBAC flags ─────────────────────────────────────────────────────────────
+  const canCreate       = can('appointments', 'create');
+  const canCancel       = can('appointments', 'cancel');
+  const canUpdateStatus = can('appointments', 'updateStatus');
 
   const [showBookModal, setShowBookModal] = useState(false);
 
@@ -78,7 +86,9 @@ export default function AppointmentList() {
             </div>
           )}
           {isDrainingQueue && <div style={S.drainingPill}>⟳ Syncing {offlineQueueCount} action{offlineQueueCount !== 1 ? 's' : ''}…</div>}
-          <button style={S.bookBtn} onClick={() => setShowBookModal(true)}>+ Book Appointment</button>
+          {canCreate && (
+            <button style={S.bookBtn} onClick={() => setShowBookModal(true)}>+ Book Appointment</button>
+          )}
         </div>
       </div>
 
@@ -124,7 +134,12 @@ export default function AppointmentList() {
         {loading && list.length === 0 ? (
           <div style={S.empty}>Loading appointments…</div>
         ) : list.length === 0 ? (
-          <div style={S.empty}>No appointments found. <button style={S.inlineLink} onClick={() => setShowBookModal(true)}>Book one now</button></div>
+          <div style={S.empty}>
+            No appointments found.
+            {canCreate && (
+              <button style={S.inlineLink} onClick={() => setShowBookModal(true)}> Book one now</button>
+            )}
+          </div>
         ) : (
           <table style={S.table}>
             <thead>
@@ -156,14 +171,14 @@ export default function AppointmentList() {
                         <span style={{ fontSize: 11, color: '#a0aec0' }}>Updating…</span>
                       ) : (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {next.filter((s) => s !== 'cancelled').map((s) => (
+                          {canUpdateStatus && next.filter((s) => s !== 'cancelled').map((s) => (
                             <button key={s} style={S.actionBtn} onClick={() => handleStatusChange(appt.id, s)}>
                               {s === 'arrived' && '✓ Arrived'}
                               {s === 'in-consultation' && '🩺 Consult'}
                               {s === 'completed' && '✔ Complete'}
                             </button>
                           ))}
-                          {!isFinal && (
+                          {canCancel && !isFinal && (
                             <button style={S.cancelBtn} onClick={() => handleCancel(appt.id)}>✕ Cancel</button>
                           )}
                         </div>
@@ -179,7 +194,7 @@ export default function AppointmentList() {
 
       {renderPagination()}
 
-      {showBookModal && (
+      {canCreate && showBookModal && (
         <AppointmentForm
           onClose={() => setShowBookModal(false)}
           doctors={[]}
@@ -191,7 +206,7 @@ export default function AppointmentList() {
 }
 
 const S = {
-  page:        { padding: '28px 32px', fontFamily: "'DM Sans','Inter',sans-serif", minHeight: '100vh', background: '#f7f5f0' },
+  page:        { padding: '28px 32px', fontFamily: "'DM Sans','Inter',sans-serif", background: '#f7f5f0' },
   header:      { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 },
   title:       { margin: 0, fontSize: 26, fontWeight: 800, color: '#1a202c' },
   subtitle:    { margin: '4px 0 0', fontSize: 14, color: '#718096' },

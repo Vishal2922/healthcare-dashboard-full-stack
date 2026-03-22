@@ -6,6 +6,7 @@ import {
 } from '@ant-design/icons';
 import useStaff from '../../modules/staff/hooks/useStaff';
 import useUsers from '../../modules/users/hooks/useUsers';
+import usePermission from '../../hooks/usePermission';
 
 const fadeUp = keyframes`from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}`;
 const spin   = keyframes`to{transform:rotate(360deg)}`;
@@ -64,6 +65,11 @@ export default function StaffManagement() {
   } = useStaff();
 
   const { roles: tenantRoles, fetchRoles: fetchTenantRoles } = useUsers();
+  const { can } = usePermission();
+
+  // ── RBAC flags ─────────────────────────────────────────────────────────────
+  const canEdit        = can('staff', 'edit');
+  const canToggleActive= can('staff', 'toggleActive');
 
   const [activeRoleId,  setActiveRoleId]  = useState(null);
   const [assignModal,   setAssignModal]   = useState(false);
@@ -181,13 +187,16 @@ export default function StaffManagement() {
                       </Td>
                       <Td>
                         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                          <AssignBtn disabled={submitting} onClick={()=>openAssign(s)}>
-                            <SwapOutlined /> Change Role
-                          </AssignBtn>
-                          {status==='active'
-                            ? <DeactivateBtn disabled={submitting} onClick={()=>deactivateStaff(s.id)}><StopOutlined />Deactivate</DeactivateBtn>
-                            : <ActivateBtn   disabled={submitting} onClick={()=>activateStaff(s.id)}><CheckCircleOutlined />Activate</ActivateBtn>
-                          }
+                          {canEdit && (
+                            <AssignBtn disabled={submitting} onClick={()=>openAssign(s)}>
+                              <SwapOutlined /> Change Role
+                            </AssignBtn>
+                          )}
+                          {canToggleActive && (
+                            status==='active'
+                              ? <DeactivateBtn disabled={submitting} onClick={()=>deactivateStaff(s.id)}><StopOutlined />Deactivate</DeactivateBtn>
+                              : <ActivateBtn   disabled={submitting} onClick={()=>activateStaff(s.id)}><CheckCircleOutlined />Activate</ActivateBtn>
+                          )}
                         </div>
                       </Td>
                     </Tr>

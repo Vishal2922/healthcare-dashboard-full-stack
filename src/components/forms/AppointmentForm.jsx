@@ -121,8 +121,8 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
 }
 
 const S = {
-  overlay:       { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  card:          { background: '#fff', borderRadius: 12, padding: '28px 32px', width: '100%', maxWidth: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' },
+  overlay:       { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '24px 16px' },
+  card:          { background: '#fff', borderRadius: 12, padding: '28px 32px', width: '100%', maxWidth: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', maxHeight: 'none', margin: 'auto' },
   header:        { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   title:         { margin: 0, fontSize: 20, fontWeight: 700, color: '#1a202c' },
   closeBtn:      { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#718096' },
