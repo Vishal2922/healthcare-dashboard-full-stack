@@ -6,10 +6,17 @@ import staffReducer from '../modules/staff/staffSlice';
 import appointmentReducer from '../modules/appointments/appointmentSlice';
 import patientReducer from '../modules/patients/patientSlice';
 import billingReducer     from '../modules/billing/billingSlice'; // ← NEW (Module 11)
+ 
+
+ 
+// ── NEW: Module 10 & 13 ──────────────────────────────
+import chatReducer         from '../modules/chat/chatSlice';
+import notificationReducer from '../modules/notifications/notificationSlice';
+ 
 import rootSaga from './rootSaga';
-
+ 
 const sagaMiddleware = createSagaMiddleware();
-
+ 
 const store = configureStore({
   reducer: {
     auth:  authReducer,
@@ -20,14 +27,20 @@ const store = configureStore({
     // appointments:  appointmentReducer,
     billing:       billingReducer,
     // notifications: notificationReducer,
-    auth: authReducer,
+    
     appointments: appointmentReducer,
     patients: patientReducer,
+  
+    
+    
+    // ── NEW ───────────────────────────────────────────
+    chat:          chatReducer,
+    notifications: notificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ thunk: false }).concat(sagaMiddleware),
 });
-
+ 
 sagaMiddleware.run(rootSaga);
-
+ 
 export default store;
