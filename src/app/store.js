@@ -5,6 +5,7 @@ import userReducer from '../modules/users/userSlice';
 import staffReducer from '../modules/staff/staffSlice';
 import appointmentReducer from '../modules/appointments/appointmentSlice';
 import patientReducer from '../modules/patients/patientSlice';
+import billingReducer     from '../modules/billing/billingSlice'; // ← NEW (Module 11)
 import rootSaga from './rootSaga';
 
 const sagaMiddleware = createSagaMiddleware();
@@ -17,7 +18,7 @@ const store = configureStore({
     // tenant:        tenantReducer,
     // patients:      patientReducer,
     // appointments:  appointmentReducer,
-    // billing:       billingReducer,
+    billing:       billingReducer,
     // notifications: notificationReducer,
     auth: authReducer,
     appointments: appointmentReducer,
