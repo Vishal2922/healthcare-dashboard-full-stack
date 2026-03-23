@@ -22,21 +22,26 @@ const SectionLabel = styled(Text)`
 `;
 const LineItemRow = styled.div`
   display: grid;
-  grid-template-columns: 1fr 80px 100px 32px;
+  grid-template-columns: 1fr 80px 110px 32px;
   gap: 8px;
   align-items: flex-start;
   margin-bottom: 8px;
 `;
-const TotalRow = styled.div`
-  display: flex; justify-content: flex-end;
-  padding: 12px 0; font-size: 16px; font-weight: 700;
+const TotalBox = styled.div`
+  background: #f7f9fb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+`;
+const TotalLine = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #4a5568;
+  margin-bottom: 4px;
+  &:last-child { margin-bottom: 0; font-size: 15px; font-weight: 700; color: #0e1b2a; }
 `;
 
-/**
- * InvoiceFormDrawer — Create new invoice
- * Line items: description, quantity, unit_price
- * Total calculated client-side (confirmed by backend)
- */
 export default function InvoiceFormDrawer({
   open,
   onClose,
@@ -46,11 +51,13 @@ export default function InvoiceFormDrawer({
 }) {
   const [form]  = Form.useForm();
   const [items, setItems] = useState([{ description: '', quantity: 1, unit_price: 0 }]);
+  const [taxPercent, setTaxPercent] = useState(0);
 
   useEffect(() => {
     if (open) {
       form.resetFields();
       setItems([{ description: '', quantity: 1, unit_price: 0 }]);
+      setTaxPercent(0);
     }
   }, [open, form]);
 
@@ -65,24 +72,41 @@ export default function InvoiceFormDrawer({
     setItems(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
-  const total = items.reduce((sum, item) => {
+  // Subtotal before tax
+  const subtotal = items.reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
   }, 0);
 
+  const taxAmount = Math.round(subtotal * ((Number(taxPercent) || 0) / 100) * 100) / 100;
+  const grandTotal = Math.round((subtotal + taxAmount) * 100) / 100;
+
   const handleFinish = (values) => {
     const validItems = items.filter((item) => item.description.trim());
-    if (validItems.length === 0) return;
+    if (validItems.length === 0) {
+      return; // guard — at least one item required
+    }
+
+    // FIX: send `amount` (subtotal) and `tax_percent` so backend can validate
+    // and recalculate. Also send total_amount for reference.
     onSubmit({
-      ...values,
-      due_date: values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
-      items: validItems,
-      total_amount: total,
+      patient_id:     Number(values.patient_id),
+      appointment_id: values.appointment_id ? Number(values.appointment_id) : null,
+      due_date:       values.due_date ? values.due_date.format('YYYY-MM-DD') : null,
+      payment_method: values.payment_method || null,
+      notes:          values.notes || null,
+      // These three are what the backend validates and uses:
+      amount:         subtotal,
+      tax_percent:    Number(taxPercent) || 0,
+      total_amount:   grandTotal,
+      // Line items sent for reference (backend currently uses amount directly)
+      items:          validItems,
     });
   };
 
   const handleClose = () => {
     form.resetFields();
     setItems([{ description: '', quantity: 1, unit_price: 0 }]);
+    setTaxPercent(0);
     onClose();
   };
 
@@ -97,14 +121,14 @@ export default function InvoiceFormDrawer({
         </DrawerTitle>
       }
       placement="right"
-      width={560}
+      width={580}
       open={open}
       onClose={handleClose}
       destroyOnClose
       footer={
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <Text strong style={{ fontSize: 15 }}>
-            Total: ₹{total.toLocaleString('en-IN')}
+            Total: ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </Text>
           <Space>
             <Button onClick={handleClose} style={{ borderRadius: 6 }}>Cancel</Button>
@@ -132,21 +156,27 @@ export default function InvoiceFormDrawer({
 
       <Form form={form} layout="vertical" onFinish={handleFinish} requiredMark={false}>
 
-        {/* ── Patient & Appointment ──────────────────────────────────── */}
+        {/* ── Patient & Appointment ─────────────────────────────────────── */}
         <SectionLabel>Patient Details</SectionLabel>
         <Row gutter={12}>
           <Col span={14}>
             <Form.Item
               name="patient_id"
               label="Patient ID"
-              rules={[{ required: true, message: 'Patient ID required' }]}
+              rules={[
+                { required: true, message: 'Patient ID is required' },
+                { pattern: /^\d+$/, message: 'Must be a number' },
+              ]}
             >
-              <Input placeholder="e.g. 42" type="number" />
+              <Input placeholder="e.g. 42" />
             </Form.Item>
           </Col>
           <Col span={10}>
-            <Form.Item name="appointment_id" label="Appointment ID (optional)">
-              <Input placeholder="e.g. 15" type="number" />
+            <Form.Item
+              name="appointment_id"
+              label="Appointment ID (optional)"
+            >
+              <Input placeholder="e.g. 15" />
             </Form.Item>
           </Col>
         </Row>
@@ -156,7 +186,7 @@ export default function InvoiceFormDrawer({
             <Form.Item
               name="due_date"
               label="Due Date"
-              rules={[{ required: true, message: 'Due date required' }]}
+              rules={[{ required: true, message: 'Due date is required' }]}
             >
               <DatePicker
                 style={{ width: '100%' }}
@@ -180,14 +210,14 @@ export default function InvoiceFormDrawer({
 
         <Divider style={{ margin: '4px 0 16px' }} />
 
-        {/* ── Line Items ─────────────────────────────────────────────── */}
+        {/* ── Line Items ────────────────────────────────────────────────── */}
         <SectionLabel>Invoice Items</SectionLabel>
 
-        <div style={{ marginBottom: 4 }}>
+        <div style={{ marginBottom: 6 }}>
           <Row gutter={8}>
             <Col flex="1"><Text type="secondary" style={{ fontSize: 12 }}>Description</Text></Col>
             <Col style={{ width: 80 }}><Text type="secondary" style={{ fontSize: 12 }}>Qty</Text></Col>
-            <Col style={{ width: 100 }}><Text type="secondary" style={{ fontSize: 12 }}>Unit Price (₹)</Text></Col>
+            <Col style={{ width: 110 }}><Text type="secondary" style={{ fontSize: 12 }}>Unit Price (₹)</Text></Col>
             <Col style={{ width: 32 }} />
           </Row>
         </div>
@@ -202,13 +232,14 @@ export default function InvoiceFormDrawer({
             <InputNumber
               min={1}
               value={item.quantity}
-              onChange={(v) => updateItem(idx, 'quantity', v)}
+              onChange={(v) => updateItem(idx, 'quantity', v ?? 1)}
               style={{ width: '100%' }}
             />
             <InputNumber
               min={0}
+              precision={2}
               value={item.unit_price}
-              onChange={(v) => updateItem(idx, 'unit_price', v)}
+              onChange={(v) => updateItem(idx, 'unit_price', v ?? 0)}
               style={{ width: '100%' }}
             />
             <Button
@@ -231,15 +262,44 @@ export default function InvoiceFormDrawer({
           Add Item
         </Button>
 
-        <TotalRow>
-          <Text strong style={{ fontSize: 16 }}>
-            Total: ₹{total.toLocaleString('en-IN')}
-          </Text>
-        </TotalRow>
+        {/* ── Tax & Total ───────────────────────────────────────────────── */}
+        <Row gutter={12} style={{ marginBottom: 12 }}>
+          <Col span={10}>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+              Tax %
+            </Text>
+            <InputNumber
+              min={0}
+              max={100}
+              precision={2}
+              value={taxPercent}
+              onChange={(v) => setTaxPercent(v ?? 0)}
+              style={{ width: '100%' }}
+              placeholder="0"
+            />
+          </Col>
+        </Row>
+
+        <TotalBox>
+          <TotalLine>
+            <span>Subtotal</span>
+            <span>₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          </TotalLine>
+          {taxAmount > 0 && (
+            <TotalLine>
+              <span>Tax ({taxPercent}%)</span>
+              <span>₹{taxAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </TotalLine>
+          )}
+          <TotalLine>
+            <span>Total</span>
+            <span>₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          </TotalLine>
+        </TotalBox>
 
         <Divider style={{ margin: '4px 0 16px' }} />
 
-        {/* ── Notes ─────────────────────────────────────────────────── */}
+        {/* ── Notes ─────────────────────────────────────────────────────── */}
         <Form.Item name="notes" label="Notes (optional)">
           <TextArea rows={2} placeholder="Any additional notes for this invoice…" />
         </Form.Item>

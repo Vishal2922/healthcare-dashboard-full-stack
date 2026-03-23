@@ -10,14 +10,14 @@ import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import {
   Table, Button, Input, Select, Tag, Space, Tooltip,
-  Alert, Typography, Row, Col, Card, Popconfirm,
+  Alert, Typography, Row, Col, Card, Popconfirm, Statistic,
 } from 'antd';
 import {
   MedicineBoxOutlined, PlusOutlined, SearchOutlined,
   CheckCircleOutlined, ClockCircleOutlined,
   ReloadOutlined, FilterOutlined, DownloadOutlined,
+  UserOutlined, WifiOutlined,
 } from '@ant-design/icons';
-
 
 import usePrescriptions from '../../modules/prescriptions/hooks/usePrescriptions';
 import usePermission from '../../hooks/usePermission';
@@ -31,8 +31,8 @@ import PrescriptionFormDrawer from './PrescriptionFormDrawer';
 import { downloadPrescriptionPDF } from '../../utils/prescriptionPDF';
 
 const { Title, Text } = Typography;
-const { Search } = Input;
-const { Option } = Select;
+const { Search }      = Input;
+const { Option }      = Select;
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 const PageWrapper = styled.div`
@@ -40,66 +40,76 @@ const PageWrapper = styled.div`
 `;
 
 const PageHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
 `;
 
 const HeaderLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: flex; align-items: center; gap: 12px;
 `;
 
 const PageIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 48px; height: 48px; border-radius: 12px;
   background: #20b486;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  color: #fff;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: #fff; flex-shrink: 0;
 `;
 
-const StatsCard = styled(Card)`
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
-  text-align: center;
-  .ant-card-body { padding: 16px 12px; }
+// ── Stats section ─────────────────────────────────────────────────────────────
+const StatsRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+`;
+
+const StatCard = styled(Card)`
+  border-radius: 12px; border: none;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  .ant-card-body { padding: 16px 18px; }
+`;
+
+const StatHeader = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+`;
+
+const StatLabel = styled.div`
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: #a0aab4;
+`;
+
+const StatIconWrap = styled.div`
+  width: 28px; height: 28px; border-radius: 7px;
+  background: ${({ $bg }) => $bg || '#f0fdf9'};
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: ${({ $color }) => $color || '#20b486'};
 `;
 
 const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 28px; font-weight: 800;
+  color: ${({ $color }) => $color || '#0e1b2a'};
   line-height: 1;
-  color: ${({ $color }) => $color || '#1a1a1a'};
-  margin-bottom: 4px;
 `;
 
+const StatNote = styled.div`
+  font-size: 11px; color: #a0aab4; margin-top: 4px;
+`;
+
+// ── Table section ─────────────────────────────────────────────────────────────
 const TableCard = styled(Card)`
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+  border-radius: 12px; border: none;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
   .ant-card-body { padding: 0; }
 `;
 
 const FilterBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
   flex-wrap: wrap;
 `;
 
-// ─── Status badge helper ──────────────────────────────────────────────────────
+// ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   if (status === 'dispensed') {
     return (
@@ -131,11 +141,8 @@ export default function PrescriptionList() {
   const { can, role: userRole } = usePermission();
   const { user } = useAuth();
 
-  // ── Load patient list independently (Pharmacist doesn't have patients access)
-  // ── so we fetch patients directly from Redux store, not via usePatients hook
   const patientList = useSelector(selectPatientList);
   useEffect(() => {
-    // Only Provider needs patient list for the create form
     if (can('patients', 'view')) {
       dispatch(fetchPatientsRequest({ page: 1, per_page: 200 }));
     }
@@ -149,11 +156,26 @@ export default function PrescriptionList() {
   const debouncedSearch = useDebounce(searchText, 300);
 
   // ── RBAC flags ─────────────────────────────────────────────────────────────
-  const canCreate   = can('prescriptions', 'create');   // Provider only
-  const canUpdate   = can('prescriptions', 'update');   // Provider + Pharmacist
-  const canDispense = can('prescriptions', 'dispense'); // Pharmacist only
+  const canCreate   = can('prescriptions', 'create');
+  const canUpdate   = can('prescriptions', 'update');
+  const canDispense = can('prescriptions', 'dispense');
 
-  // ── Filtered list ─────────────────────────────────────────────────────────
+  // ── Computed stats from full list ──────────────────────────────────────────
+  const total      = list.length;
+  const pending    = list.filter((r) => r.status === 'pending').length;
+  const dispensed  = list.filter((r) => r.status === 'dispensed').length;
+
+  // Prescriptions created today
+  const todayStr   = new Date().toLocaleDateString('en-IN');
+  const today      = list.filter((r) =>
+    r.created_at && new Date(r.created_at).toLocaleDateString('en-IN') === todayStr
+  ).length;
+
+  // Pending rate percentage
+  const pendingRate = total > 0 ? Math.round((pending / total) * 100) : 0;
+  const dispenseRate = total > 0 ? Math.round((dispensed / total) * 100) : 0;
+
+  // ── Filtered list ──────────────────────────────────────────────────────────
   const filteredList = list.filter((rx) => {
     const q = debouncedSearch.toLowerCase();
     const matchSearch = !q || (
@@ -164,10 +186,6 @@ export default function PrescriptionList() {
     const matchStatus = !statusFilter || rx.status === statusFilter;
     return matchSearch && matchStatus;
   });
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const pending   = list.filter((r) => r.status === 'pending').length;
-  const dispensed = list.filter((r) => r.status === 'dispensed').length;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleOpenCreate = () => { setEditTarget(null); setDrawerOpen(true); };
@@ -198,7 +216,7 @@ export default function PrescriptionList() {
     });
   }, [user]);
 
-  // ── Table columns ─────────────────────────────────────────────────────────
+  // ── Table columns ──────────────────────────────────────────────────────────
   const columns = [
     {
       title: 'ID',
@@ -250,16 +268,16 @@ export default function PrescriptionList() {
       title: 'Date',
       dataIndex: 'created_at',
       width: 100,
-      render: (d) => d ? new Date(d).toLocaleDateString('en-IN') : '—',
+      render: (d) => d
+        ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
+        : '—',
     },
-    // Actions column — Download always visible; write actions based on role
     {
       title: 'Actions',
       key: 'actions',
       width: 200,
       render: (_, record) => (
         <Space size={6}>
-          {/* Provider can edit pending prescriptions */}
           {canUpdate && !canDispense && record.status === 'pending' && (
             <Tooltip title="Edit prescription">
               <Button
@@ -272,7 +290,6 @@ export default function PrescriptionList() {
               </Button>
             </Tooltip>
           )}
-          {/* Pharmacist dispenses pending prescriptions */}
           {canDispense && record.status === 'pending' && (
             <Popconfirm
               title="Mark as dispensed?"
@@ -298,7 +315,6 @@ export default function PrescriptionList() {
           {canDispense && record.status === 'dispensed' && (
             <Tag color="success" style={{ borderRadius: 6, fontSize: 11 }}>✓ Done</Tag>
           )}
-          {/* Download — always visible for all roles */}
           <Tooltip title="Download prescription PDF">
             <Button
               size="small"
@@ -312,14 +328,12 @@ export default function PrescriptionList() {
     },
   ];
 
-  // ── Access Denied ─────────────────────────────────────────────────────────
+  // ── Access Denied ──────────────────────────────────────────────────────────
   if (!hasAccess) {
     return (
       <PageWrapper>
         <Alert
-          type="error"
-          showIcon
-          title="Access Denied"
+          type="error" showIcon
           description="You do not have permission to view prescriptions."
           style={{ borderRadius: 8, maxWidth: 500 }}
         />
@@ -329,128 +343,162 @@ export default function PrescriptionList() {
 
   return (
     <PageWrapper>
-        {/* ── Alerts ──────────────────────────────────────────────────────── */}
-        {error && (
-          <Alert type="error" showIcon title={error} closable onClose={dismissError}
-            style={{ borderRadius: 8, marginBottom: 16 }} />
-        )}
-        {successMessage && (
-          <Alert type="success" showIcon title={successMessage} closable onClose={dismissSuccess}
-            style={{ borderRadius: 8, marginBottom: 16 }} />
-        )}
+      {/* ── Alerts ────────────────────────────────────────────────────────── */}
+      {error && (
+        <Alert type="error" showIcon message={error} closable onClose={dismissError}
+          style={{ borderRadius: 8, marginBottom: 16 }} />
+      )}
+      {successMessage && (
+        <Alert type="success" showIcon message={successMessage} closable onClose={dismissSuccess}
+          style={{ borderRadius: 8, marginBottom: 16 }} />
+      )}
 
-        {/* ── Page Header ─────────────────────────────────────────────────── */}
-        <PageHeader>
-          <HeaderLeft>
-            <PageIcon><MedicineBoxOutlined /></PageIcon>
-            <div>
-              <Title level={4} style={{ margin: 0 }}>Prescriptions</Title>
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                {list.length} total · {pending} pending · {dispensed} dispensed
-                {userRole === 'Pharmacist' && (
-                  <Tag color="blue" style={{ marginLeft: 8, borderRadius: 6, fontSize: 11 }}>
-                    Pharmacist View
-                  </Tag>
-                )}
-              </Text>
-            </div>
-          </HeaderLeft>
+      {/* ── Page Header ───────────────────────────────────────────────────── */}
+      <PageHeader>
+        <HeaderLeft>
+          <PageIcon><MedicineBoxOutlined /></PageIcon>
+          <div>
+            <Title level={4} style={{ margin: 0 }}>Prescriptions</Title>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              {total} total · {pending} pending · {dispensed} dispensed
+              {userRole === 'Pharmacist' && (
+                <Tag color="blue" style={{ marginLeft: 8, borderRadius: 6, fontSize: 11 }}>
+                  Pharmacist View
+                </Tag>
+              )}
+            </Text>
+          </div>
+        </HeaderLeft>
 
-          <Space>
-            <Tooltip title="Refresh">
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={fetchPrescriptions}
-                loading={listLoading}
-              />
-            </Tooltip>
-            {canCreate && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleOpenCreate}
-                style={{
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  background: '#20b486',
-                  borderColor: '#20b486',
-                }}
-              >
-                New Prescription
-              </Button>
-            )}
-          </Space>
-        </PageHeader>
-
-        {/* ── Stats Row ───────────────────────────────────────────────────── */}
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          {[
-            { label: 'Total',     value: list.length, color: '#4f46e5' },
-            { label: 'Pending',   value: pending,     color: '#fa8c16' },
-            { label: 'Dispensed', value: dispensed,   color: '#20b486' },
-          ].map((s) => (
-            <Col xs={8} key={s.label}>
-              <StatsCard>
-                <StatValue $color={s.color}>{s.value}</StatValue>
-                <Text type="secondary" style={{ fontSize: 12 }}>{s.label}</Text>
-              </StatsCard>
-            </Col>
-          ))}
-        </Row>
-
-        {/* ── Table ───────────────────────────────────────────────────────── */}
-        <TableCard>
-          <FilterBar>
-            <Search
-              placeholder="Search patient, medicine…"
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 260 }}
-              allowClear
+        <Space>
+          <Tooltip title="Refresh">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={fetchPrescriptions}
+              loading={listLoading}
             />
-            <Select
-              placeholder="Status"
-              allowClear
-              style={{ width: 140 }}
-              value={statusFilter}
-              onChange={setStatusFilter}
+          </Tooltip>
+          {canCreate && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleOpenCreate}
+              style={{
+                borderRadius: 8, fontWeight: 600,
+                background: '#20b486', borderColor: '#20b486',
+              }}
             >
-              <Option value="pending">Pending</Option>
-              <Option value="dispensed">Dispensed</Option>
-            </Select>
-            <Button icon={<FilterOutlined />} onClick={handleReset} style={{ borderRadius: 6 }}>
-              Reset
+              New Prescription
             </Button>
-          </FilterBar>
+          )}
+        </Space>
+      </PageHeader>
 
-          <Table
-            columns={columns}
-            dataSource={filteredList}
-            rowKey="id"
-            loading={listLoading}
-            pagination={{
-              pageSize: 15,
-              showSizeChanger: true,
-              showTotal: (t) => `${t} prescriptions`,
-              style: { padding: '16px 20px' },
-            }}
-            scroll={{ x: 900 }}
-            style={{ borderRadius: '0 0 12px 12px' }}
-          />
-        </TableCard>
+      {/* ── Stats Row ─────────────────────────────────────────────────────── */}
+      <StatsRow>
+        {[
+          {
+            label: 'Total',
+            value: total,
+            note: `${today} added today`,
+            color: '#4f46e5',
+            iconBg: '#ede9fe', iconColor: '#4f46e5',
+            Icon: MedicineBoxOutlined,
+          },
+          {
+            label: 'Pending',
+            value: pending,
+            note: `${pendingRate}% of total`,
+            color: '#d97706',
+            iconBg: '#fff3cd', iconColor: '#d97706',
+            Icon: ClockCircleOutlined,
+          },
+          {
+            label: 'Dispensed',
+            value: dispensed,
+            note: `${dispenseRate}% completion`,
+            color: '#20b486',
+            iconBg: '#f0fdf9', iconColor: '#20b486',
+            Icon: CheckCircleOutlined,
+          },
+          {
+            label: 'Today',
+            value: today,
+            note: 'Prescriptions today',
+            color: '#2b6cb0',
+            iconBg: '#ebf8ff', iconColor: '#2b6cb0',
+            Icon: UserOutlined,
+          },
+        ].map(({ label, value, note, color, iconBg, iconColor, Icon }) => (
+          <StatCard key={label}>
+            <StatHeader>
+              <StatLabel>{label}</StatLabel>
+              <StatIconWrap $bg={iconBg} $color={iconColor}>
+                <Icon />
+              </StatIconWrap>
+            </StatHeader>
+            <StatValue $color={color}>{value}</StatValue>
+            <StatNote>{note}</StatNote>
+          </StatCard>
+        ))}
+      </StatsRow>
 
-        {/* ── Create / Edit Drawer (Provider only) ────────────────────────── */}
-        {canCreate && (
-          <PrescriptionFormDrawer
-            open={drawerOpen}
-            onClose={handleClose}
-            onSubmit={handleFormSubmit}
-            initialValues={editTarget}
-            loading={formLoading}
-            patients={patientList}
+      {/* ── Table ─────────────────────────────────────────────────────────── */}
+      <TableCard>
+        <FilterBar>
+          <Search
+            placeholder="Search patient, medicine…"
+            prefix={<SearchOutlined />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 260 }}
+            allowClear
           />
-        )}
-      </PageWrapper>
+          <Select
+            placeholder="Status"
+            allowClear
+            style={{ width: 140 }}
+            value={statusFilter}
+            onChange={setStatusFilter}
+          >
+            <Option value="pending">Pending</Option>
+            <Option value="dispensed">Dispensed</Option>
+          </Select>
+          <Button icon={<FilterOutlined />} onClick={handleReset} style={{ borderRadius: 6 }}>
+            Reset
+          </Button>
+          <Text type="secondary" style={{ fontSize: 12, marginLeft: 'auto' }}>
+            Showing {filteredList.length} of {total}
+          </Text>
+        </FilterBar>
+
+        <Table
+          columns={columns}
+          dataSource={filteredList}
+          rowKey="id"
+          loading={listLoading}
+          pagination={{
+            pageSize: 15,
+            showSizeChanger: true,
+            showTotal: (t) => `${t} prescriptions`,
+            style: { padding: '16px 20px' },
+          }}
+          scroll={{ x: 900 }}
+          style={{ borderRadius: '0 0 12px 12px' }}
+        />
+      </TableCard>
+
+      {/* ── Create / Edit Drawer ──────────────────────────────────────────── */}
+      {canCreate && (
+        <PrescriptionFormDrawer
+          open={drawerOpen}
+          onClose={handleClose}
+          onSubmit={handleFormSubmit}
+          initialValues={editTarget}
+          loading={formLoading}
+          patients={patientList}
+        />
+      )}
+    </PageWrapper>
   );
 }

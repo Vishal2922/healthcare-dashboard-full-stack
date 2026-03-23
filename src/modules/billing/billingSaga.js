@@ -46,26 +46,19 @@ import {
   incrementQueueRetry,
 } from './billingSlice';
 
-// ─── Selectors ────────────────────────────────────────────────────────────────
 const selectIsOnline     = (state) => state.billing.isOnline;
 const selectOfflineQueue = (state) => state.billing.offlineQueue;
 const selectMeta         = (state) => state.billing.meta;
 const selectFilters      = (state) => state.billing.filters;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_RETRIES = 3;
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
 const errMsg = (error, fallback) =>
   error?.response?.data?.message || error?.message || fallback;
 
-// ─── Response normalizer ──────────────────────────────────────────────────────
 const extractInvoice = (response) =>
   response?.data?.invoice ?? response?.data ?? response;
 
-// ════════════════════════════════════════════════════════════════════════════
-// 1. FETCH BILLING SUMMARY (prefetch — fires once per session on mount)
-// ════════════════════════════════════════════════════════════════════════════
 function* handleFetchBillingSummary() {
   try {
     const response = yield call(fetchBillingSummaryAPI);
@@ -76,9 +69,6 @@ function* handleFetchBillingSummary() {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 2. FETCH INVOICE LIST
-// ════════════════════════════════════════════════════════════════════════════
 function* handleFetchInvoices(action) {
   try {
     const filters = yield select(selectFilters);
@@ -94,58 +84,46 @@ function* handleFetchInvoices(action) {
     const response = yield call(fetchInvoiceListAPI, params);
     const payload  = response?.data || response;
 
-    yield put(fetchInvoicesSuccess({
-      data: payload.data ?? payload.invoices ?? payload,
-      meta: payload.meta ?? payload.pagination ?? {
-        total:     payload.total     ?? 0,
-        page:      params.page,
-        per_page:  params.per_page,
-        last_page: payload.last_page ?? 1,
-      },
-    }));
+    // FIX: correct invoice key + total_pages → last_page normalisation
+    const invoiceList    = payload.invoices ?? payload.data ?? [];
+    const rawPagination  = payload.pagination ?? payload.meta ?? {};
+    const normalisedMeta = {
+      total:     rawPagination.total    ?? payload.total    ?? 0,
+      page:      rawPagination.page     ?? params.page,
+      per_page:  rawPagination.per_page ?? params.per_page,
+      last_page: rawPagination.total_pages ?? rawPagination.last_page ?? 1,
+    };
+
+    yield put(fetchInvoicesSuccess({ data: invoiceList, meta: normalisedMeta }));
   } catch (error) {
     yield put(fetchInvoicesFailure(errMsg(error, 'Failed to load invoices.')));
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 3. FETCH SINGLE INVOICE
-// ════════════════════════════════════════════════════════════════════════════
 function* handleFetchInvoiceById(action) {
   try {
     const response = yield call(fetchInvoiceByIdAPI, action.payload);
-    const invoice  = extractInvoice(response);
-    yield put(fetchInvoiceByIdSuccess(invoice));
+    yield put(fetchInvoiceByIdSuccess(extractInvoice(response)));
   } catch (error) {
     yield put(fetchInvoiceByIdFailure(errMsg(error, 'Failed to load invoice details.')));
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 4. CREATE INVOICE
-// ════════════════════════════════════════════════════════════════════════════
 function* handleCreateInvoice(action) {
   const isOnline = yield select(selectIsOnline);
 
   if (!isOnline) {
     yield put(enqueueOfflineAction({
-      id:        uuidv4(),
-      type:      'create',
-      payload:   action.payload,
-      timestamp: Date.now(),
-      retries:   0,
+      id: uuidv4(), type: 'create', payload: action.payload,
+      timestamp: Date.now(), retries: 0,
     }));
-    yield put(createInvoiceFailure(
-      'You are offline. This invoice will be created when reconnected.'
-    ));
+    yield put(createInvoiceFailure('You are offline. This invoice will be created when reconnected.'));
     return;
   }
 
   try {
     const response = yield call(createInvoiceAPI, action.payload);
-    const invoice  = extractInvoice(response);
-    yield put(createInvoiceSuccess(invoice));
-    // Refresh list + summary after creation
+    yield put(createInvoiceSuccess(extractInvoice(response)));
     yield all([
       put(fetchInvoicesRequest({ page: 1 })),
       put(fetchBillingSummaryRequest()),
@@ -155,54 +133,36 @@ function* handleCreateInvoice(action) {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 5. UPDATE INVOICE STATUS
-// ════════════════════════════════════════════════════════════════════════════
 function* handleUpdateInvoiceStatus(action) {
   const isOnline = yield select(selectIsOnline);
 
   if (!isOnline) {
     yield put(enqueueOfflineAction({
-      id:        uuidv4(),
-      type:      'updateStatus',
-      payload:   action.payload,
-      timestamp: Date.now(),
-      retries:   0,
+      id: uuidv4(), type: 'updateStatus', payload: action.payload,
+      timestamp: Date.now(), retries: 0,
     }));
-    yield put(updateInvoiceStatusFailure(
-      'You are offline. This status change will sync when reconnected.'
-    ));
+    yield put(updateInvoiceStatusFailure('You are offline. This status change will sync when reconnected.'));
     return;
   }
 
   try {
     const response = yield call(updateInvoiceStatusAPI, action.payload);
-    const invoice  = extractInvoice(response);
-    yield put(updateInvoiceStatusSuccess(invoice));
-    // Refresh summary stats after every status change
+    yield put(updateInvoiceStatusSuccess(extractInvoice(response)));
     yield put(fetchBillingSummaryRequest());
   } catch (error) {
     yield put(updateInvoiceStatusFailure(errMsg(error, 'Failed to update invoice status.')));
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 6. DELETE INVOICE (Admin only — backend also enforces)
-// ════════════════════════════════════════════════════════════════════════════
 function* handleDeleteInvoice(action) {
   const isOnline = yield select(selectIsOnline);
 
   if (!isOnline) {
     yield put(enqueueOfflineAction({
-      id:        uuidv4(),
-      type:      'delete',
-      payload:   action.payload,
-      timestamp: Date.now(),
-      retries:   0,
+      id: uuidv4(), type: 'delete', payload: action.payload,
+      timestamp: Date.now(), retries: 0,
     }));
-    yield put(deleteInvoiceFailure(
-      'You are offline. This deletion will sync when reconnected.'
-    ));
+    yield put(deleteInvoiceFailure('You are offline. This deletion will sync when reconnected.'));
     return;
   }
 
@@ -215,12 +175,8 @@ function* handleDeleteInvoice(action) {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 7. OFFLINE QUEUE FLUSH
-// ════════════════════════════════════════════════════════════════════════════
 function* flushOfflineQueue() {
   yield put(flushOfflineQueueStart());
-
   const queue = yield select(selectOfflineQueue);
 
   for (const item of queue) {
@@ -229,13 +185,12 @@ function* flushOfflineQueue() {
       yield put(dequeueOfflineAction(item.id));
       continue;
     }
-
     try {
       if (item.type === 'create') {
-        const res     = yield call(createInvoiceAPI, item.payload);
+        const res = yield call(createInvoiceAPI, item.payload);
         yield put(createInvoiceSuccess(extractInvoice(res)));
       } else if (item.type === 'updateStatus') {
-        const res     = yield call(updateInvoiceStatusAPI, item.payload);
+        const res = yield call(updateInvoiceStatusAPI, item.payload);
         yield put(updateInvoiceStatusSuccess(extractInvoice(res)));
       } else if (item.type === 'delete') {
         yield call(deleteInvoiceAPI, item.payload);
@@ -249,16 +204,12 @@ function* flushOfflineQueue() {
   }
 
   yield put(flushOfflineQueueEnd());
-  // Refresh both list + summary after full flush
   yield all([
     put(fetchInvoicesRequest({ page: 1 })),
     put(fetchBillingSummaryRequest()),
   ]);
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// 8. ONLINE / OFFLINE WATCHER — event-based (zero polling spam)
-// ════════════════════════════════════════════════════════════════════════════
 function createOnlineChannel() {
   return eventChannel((emit) => {
     const handleOnline  = () => emit(true);
@@ -275,19 +226,14 @@ function createOnlineChannel() {
 function* watchOnlineStatus() {
   const initialStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
   yield put(setOnlineStatus(initialStatus));
-
   const channel = yield call(createOnlineChannel);
-
   try {
     while (true) {
       const isOnline = yield take(channel);
       yield put(setOnlineStatus(isOnline));
-
       if (isOnline) {
         const queue = yield select(selectOfflineQueue);
-        if (queue.length > 0) {
-          yield call(flushOfflineQueue);
-        }
+        if (queue.length > 0) yield call(flushOfflineQueue);
       }
     }
   } finally {
@@ -295,17 +241,14 @@ function* watchOnlineStatus() {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// ROOT BILLING SAGA
-// ════════════════════════════════════════════════════════════════════════════
 export default function* billingSaga() {
   yield all([
-    takeLatest(fetchBillingSummaryRequest.type,    handleFetchBillingSummary),
-    takeLatest(fetchInvoicesRequest.type,          handleFetchInvoices),
-    takeLatest(fetchInvoiceByIdRequest.type,       handleFetchInvoiceById),
-    takeLatest(createInvoiceRequest.type,          handleCreateInvoice),
-    takeLatest(updateInvoiceStatusRequest.type,    handleUpdateInvoiceStatus),
-    takeLatest(deleteInvoiceRequest.type,          handleDeleteInvoice),
+    takeLatest(fetchBillingSummaryRequest.type,  handleFetchBillingSummary),
+    takeLatest(fetchInvoicesRequest.type,        handleFetchInvoices),
+    takeLatest(fetchInvoiceByIdRequest.type,     handleFetchInvoiceById),
+    takeLatest(createInvoiceRequest.type,        handleCreateInvoice),
+    takeLatest(updateInvoiceStatusRequest.type,  handleUpdateInvoiceStatus),
+    takeLatest(deleteInvoiceRequest.type,        handleDeleteInvoice),
     fork(watchOnlineStatus),
   ]);
 }

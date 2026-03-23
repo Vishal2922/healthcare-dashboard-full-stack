@@ -56,13 +56,13 @@ export default function AppRouter() {
           {/* Dashboard — Admin, Provider, Pharmacist */}
           <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* Module 8: Patients — Provider, Nurse */}
-          <Route element={<RoleBasedRoute roles={['Provider', 'Nurse']} />}>
+          {/* Module 8: Patients — Admin, Provider, Nurse, Receptionist */}
+          <Route element={<RoleBasedRoute roles={['Admin', 'Provider', 'Nurse', 'Receptionist']} />}>
             <Route path="/patients"     element={<PatientList />} />
             <Route path="/patients/:id" element={<PatientProfile />} />
           </Route>
 
-          {/* Module 9: Appointments — Doctor (Provider), Nurse */}
+          {/* Module 9: Appointments — Provider, Nurse */}
           <Route element={<RoleBasedRoute roles={['Provider', 'Nurse']} />}>
             <Route path="/appointments" element={<AppointmentList />} />
           </Route>

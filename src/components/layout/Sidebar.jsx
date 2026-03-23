@@ -35,7 +35,7 @@ const NAV_ITEMS = [
     to: '/patients',
     label: 'Patients',
     Icon: TeamOutlined,
-    roles: [ROLES.PROVIDER, ROLES.NURSE],
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.NURSE, ROLES.RECEPTIONIST],
   },
   {
     to: '/appointments',
@@ -128,9 +128,9 @@ export default function Sidebar({ isOpen }) {
   const { user } = useAuth();
   const role = user?.role;
 
-  const visible      = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
-  const mainItems    = visible.filter((i) => !SETTINGS_PATHS.includes(i.to));
-  const settingsItems= visible.filter((i) => SETTINGS_PATHS.includes(i.to));
+  const visible       = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+  const mainItems     = visible.filter((i) => !SETTINGS_PATHS.includes(i.to));
+  const settingsItems = visible.filter((i) => SETTINGS_PATHS.includes(i.to));
 
   return (
     <Nav $open={isOpen}>

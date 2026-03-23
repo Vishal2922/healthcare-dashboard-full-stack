@@ -23,7 +23,6 @@ const { Title, Text } = Typography;
 const { Search }      = Input;
 const { Option }      = Select;
 
-// ─── Styled Components ────────────────────────────────────────────────────────
 const PageWrapper = styled.div`
   padding: 24px; min-height: 100vh;
   background: ${({ theme }) => theme.colors?.background || '#f7f5f0'};
@@ -64,7 +63,6 @@ const PatientAvatar = styled(Avatar)`
   font-weight: 700; font-size: 15px;
 `;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const GENDER_COLORS = {
   Male:   { color: '#1890ff', bg: '#e6f7ff' },
   Female: { color: '#eb2f96', bg: '#fff0f6' },
@@ -91,7 +89,6 @@ function calcAge(dob) {
   return Math.floor((Date.now() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
 }
 
-// ─── Build dropdown items array (antd v5/v6 API — no overlay, no Menu) ───────
 function buildMenuItems({ record, navigate, onEdit, onDelete, canDelete, formLoading }) {
   const baseItems = [
     {
@@ -116,6 +113,7 @@ function buildMenuItems({ record, navigate, onEdit, onDelete, canDelete, formLoa
     {
       key: 'delete',
       icon: <DeleteOutlined />,
+      danger: true,
       label: (
         <Popconfirm
           title="Delete this patient?"
@@ -129,13 +127,11 @@ function buildMenuItems({ record, navigate, onEdit, onDelete, canDelete, formLoa
           <span onClick={(e) => e.stopPropagation()}>Delete</span>
         </Popconfirm>
       ),
-      danger: true,
-      onClick: () => {}, // handled by Popconfirm above
+      onClick: () => {},
     },
   ];
 }
 
-// ─── Table Columns ────────────────────────────────────────────────────────────
 function buildColumns({ navigate, onEdit, onDelete, canEdit, canDelete, formLoading }) {
   return [
     {
@@ -204,46 +200,11 @@ function buildColumns({ navigate, onEdit, onDelete, canEdit, canDelete, formLoad
       title: '', key: 'actions', width: 60, align: 'center',
       render: (_, record) => (
         <Dropdown
-          overlay={
-            <Menu>
-              <Menu.Item
-                key="view"
-                icon={<EyeOutlined />}
-                onClick={() => navigate(`/patients/${record.id}`)}
-              >
-                View Profile
-              </Menu.Item>
-              {canEdit && (
-                <Menu.Item
-                  key="edit"
-                  icon={<EditOutlined />}
-                  onClick={() => onEdit(record)}
-                >
-                  Edit
-                </Menu.Item>
-              )}
-              {canDelete && (
-                <>
-                  <Menu.Divider />
-                  <Menu.Item key="delete" danger>
-                    <Popconfirm
-                      title="Delete this patient?"
-                      description="This action is permanent and cannot be undone."
-                      onConfirm={() => onDelete(record.id)}
-                      okText="Delete"
-                      cancelText="Cancel"
-                      okButtonProps={{ danger: true, loading: formLoading }}
-                    >
-                      <Space>
-                        <DeleteOutlined />
-                        Delete
-                      </Space>
-                    </Popconfirm>
-                  </Menu.Item>
-                </>
-              )}
-            </Menu>
-          }
+          menu={{
+            items: buildMenuItems({
+              record, navigate, onEdit, onDelete, canDelete, formLoading,
+            }),
+          }}
           trigger={['click']}
           placement="bottomRight"
         >
@@ -254,16 +215,15 @@ function buildColumns({ navigate, onEdit, onDelete, canEdit, canDelete, formLoad
   ];
 }
 
-// ─── Page Component ───────────────────────────────────────────────────────────
 export default function PatientList() {
   const dispatch  = useDispatch();
   const navigate  = useNavigate();
   const pts       = usePatients();
   const { can }   = usePermission();
 
-  // ── RBAC flags (from permissions.js) ─────────────────────────────────────
   const canCreate = can('patients', 'create');
   const canEdit   = can('patients', 'edit');
+  // FIX: only declared here — was also destructured from pts below causing the build error
   const canDelete = can('patients', 'delete');
 
   const [drawerOpen,  setDrawerOpen]  = useState(false);
@@ -271,19 +231,16 @@ export default function PatientList() {
   const [searchText,  setSearchText]  = useState('');
   const debouncedSearch = useDebounce(searchText, 400);
 
-  // Destructure before effects — safe fallbacks for accessDenied
   const applyFilters  = pts.accessDenied ? null : pts.applyFilters;
   const fetchPatients = pts.accessDenied ? null : pts.fetchPatients;
   const clearFilters  = pts.accessDenied ? null : pts.clearFilters;
 
-  // useEffect — unconditional, guard inside
   useEffect(() => {
     if (!applyFilters) return;
     applyFilters({ search: debouncedSearch });
     dispatch(fetchPatientsRequest({ page: 1, filters: { search: debouncedSearch } }));
   }, [debouncedSearch]); // eslint-disable-line
 
-  // RBAC guard — after all hooks
   if (pts.accessDenied) {
     return (
       <PageWrapper>
@@ -294,9 +251,10 @@ export default function PatientList() {
     );
   }
 
+  // FIX: canDelete removed from here — already declared above
   const {
     patientList, meta, filters, listLoading, formLoading,
-    error, successMessage, isOnline, pendingCount, isFlushing, canDelete,
+    error, successMessage, isOnline, pendingCount, isFlushing,
     createPatient, updatePatient, deletePatient,
     dismissError, dismissSuccess,
   } = pts;
@@ -342,7 +300,6 @@ export default function PatientList() {
 
   return (
     <PageWrapper>
-      {/* Banners */}
       {!isOnline && (
         <Alert type="warning" showIcon
           message={pendingCount > 0
@@ -364,7 +321,6 @@ export default function PatientList() {
           style={{ borderRadius: 8, marginBottom: 16 }} />
       )}
 
-      {/* Header */}
       <PageHeader>
         <HeaderLeft>
           <PageIcon><UserOutlined /></PageIcon>
@@ -399,7 +355,6 @@ export default function PatientList() {
         </Space>
       </PageHeader>
 
-      {/* Stats */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         {[
           { label: 'Total Patients', value: meta.total,   color: '#4f46e5' },
@@ -416,7 +371,6 @@ export default function PatientList() {
         ))}
       </Row>
 
-      {/* Table */}
       <TableCard>
         <FilterBar>
           <Search placeholder="Search name, phone, or email…" prefix={<SearchOutlined />}
@@ -458,7 +412,6 @@ export default function PatientList() {
         />
       </TableCard>
 
-      {/* ── Drawer ──────────────────────────────────────────────────────────── */}
       {(canCreate || canEdit) && (
         <PatientFormDrawer
           open={drawerOpen}

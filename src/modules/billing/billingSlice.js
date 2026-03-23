@@ -1,28 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-/**
- * billingSlice — Module 11: Billing & Payments
- *
- * Follows the exact same pattern as patientSlice (Module 8).
- *
- * State shape:
- *   invoices        → paginated invoice array (current page)
- *   selectedInvoice → currently viewed invoice (with line items)
- *   summary         → { total_invoices, paid, unpaid, overdue, revenue_this_month }
- *   meta            → { total, page, per_page, last_page }
- *   filters         → { search, status, date_from, date_to }
- *   listLoading     → skeleton for invoice table
- *   detailLoading   → skeleton for invoice detail drawer
- *   formLoading     → spinner for create / status-update
- *   summaryLoading  → spinner for summary cards
- *   prefetched      → summary fetched once per session
- *   error           → last error string
- *   successMessage  → shown after CUD actions
- *   offlineQueue    → pending mutations when offline
- *   isOnline        → navigator.onLine mirror
- *   isFlushing      → queue draining
- */
-
 const initialState = {
   invoices:        [],
   selectedInvoice: null,
@@ -31,9 +8,13 @@ const initialState = {
     total_invoices:     0,
     paid:               0,
     unpaid:             0,
+    pending:            0,
     overdue:            0,
+    cancelled:          0,
     revenue_this_month: 0,
     total_revenue:      0,
+    total_billed:       0,
+    total_collected:    0,
   },
 
   meta: {
@@ -59,12 +40,36 @@ const initialState = {
   error:          null,
   successMessage: null,
 
-  // ── Offline Queue ────────────────────────────────────────────────────────
-  // Each entry: { id (uuid), type: 'create'|'updateStatus'|'delete', payload, timestamp, retries }
   offlineQueue: [],
   isOnline:     true,
   isFlushing:   false,
 };
+
+// ── Helper: adjust summary counters when a status changes ─────────────────
+// oldStatus → decrement its bucket; newStatus → increment its bucket
+function adjustSummary(summary, oldStatus, newStatus) {
+  const s = { ...summary };
+
+  // Decrement old bucket
+  if (oldStatus === 'paid')      s.paid      = Math.max(0, (s.paid      || 0) - 1);
+  if (oldStatus === 'pending')   s.pending   = Math.max(0, (s.pending   || 0) - 1);
+  if (oldStatus === 'overdue')   s.overdue   = Math.max(0, (s.overdue   || 0) - 1);
+  if (oldStatus === 'cancelled') s.cancelled = Math.max(0, (s.cancelled || 0) - 1);
+  if (['pending', 'overdue', 'unpaid'].includes(oldStatus)) {
+    s.unpaid = Math.max(0, (s.unpaid || 0) - 1);
+  }
+
+  // Increment new bucket
+  if (newStatus === 'paid')      s.paid      = (s.paid      || 0) + 1;
+  if (newStatus === 'pending')   s.pending   = (s.pending   || 0) + 1;
+  if (newStatus === 'overdue')   s.overdue   = (s.overdue   || 0) + 1;
+  if (newStatus === 'cancelled') s.cancelled = (s.cancelled || 0) + 1;
+  if (['pending', 'overdue', 'unpaid'].includes(newStatus)) {
+    s.unpaid = (s.unpaid || 0) + 1;
+  }
+
+  return s;
+}
 
 const billingSlice = createSlice({
   name: 'billing',
@@ -72,12 +77,13 @@ const billingSlice = createSlice({
 
   reducers: {
 
-    // ── Fetch Summary (prefetch on mount) ─────────────────────────────────
+    // ── Fetch Summary ─────────────────────────────────────────────────────
     fetchBillingSummaryRequest: (state) => {
       state.summaryLoading = true;
       state.error          = null;
     },
     fetchBillingSummarySuccess: (state, action) => {
+      // Backend now returns the correct keys: paid, unpaid, pending, overdue
       state.summary        = { ...state.summary, ...action.payload };
       state.summaryLoading = false;
       state.prefetched     = true;
@@ -129,9 +135,11 @@ const billingSlice = createSlice({
       state.formLoading    = false;
       state.successMessage = 'Invoice created successfully.';
       state.invoices.unshift(action.payload);
-      state.meta.total    += 1;
-      state.summary.total_invoices += 1;
-      state.summary.unpaid         += 1;
+      state.meta.total             += 1;
+      state.summary.total_invoices  = (state.summary.total_invoices || 0) + 1;
+      // New invoice starts as 'pending' (not 'unpaid')
+      state.summary.pending = (state.summary.pending || 0) + 1;
+      state.summary.unpaid  = (state.summary.unpaid  || 0) + 1;
     },
     createInvoiceFailure: (state, action) => {
       state.formLoading = false;
@@ -148,13 +156,22 @@ const billingSlice = createSlice({
       state.formLoading    = false;
       state.successMessage = `Invoice marked as ${action.payload.status}.`;
 
-      // Update in list
+      // Find old status before overwriting the list
       const idx = state.invoices.findIndex((inv) => inv.id === action.payload.id);
+      const oldStatus = idx !== -1 ? state.invoices[idx].status : null;
+      const newStatus = action.payload.status;
+
+      // Update in list
       if (idx !== -1) state.invoices[idx] = action.payload;
 
       // Update detail view
       if (state.selectedInvoice?.id === action.payload.id) {
         state.selectedInvoice = action.payload;
+      }
+
+      // FIX: Adjust summary counters based on the status transition
+      if (oldStatus && oldStatus !== newStatus) {
+        state.summary = adjustSummary(state.summary, oldStatus, newStatus);
       }
     },
     updateInvoiceStatusFailure: (state, action) => {
@@ -162,7 +179,7 @@ const billingSlice = createSlice({
       state.error       = action.payload;
     },
 
-    // ── Delete Invoice (Admin only) ───────────────────────────────────────
+    // ── Delete Invoice ────────────────────────────────────────────────────
     deleteInvoiceRequest: (state) => {
       state.formLoading    = true;
       state.error          = null;
@@ -171,9 +188,19 @@ const billingSlice = createSlice({
     deleteInvoiceSuccess: (state, action) => {
       state.formLoading    = false;
       state.successMessage = 'Invoice deleted.';
-      state.invoices       = state.invoices.filter((inv) => inv.id !== action.payload);
-      state.meta.total     = Math.max(0, state.meta.total - 1);
-      state.summary.total_invoices = Math.max(0, state.summary.total_invoices - 1);
+
+      // Find old status before removing
+      const removed = state.invoices.find((inv) => inv.id === action.payload);
+      const oldStatus = removed?.status || null;
+
+      state.invoices   = state.invoices.filter((inv) => inv.id !== action.payload);
+      state.meta.total = Math.max(0, state.meta.total - 1);
+      state.summary.total_invoices = Math.max(0, (state.summary.total_invoices || 0) - 1);
+
+      // Decrement the old status counter
+      if (oldStatus) {
+        state.summary = adjustSummary(state.summary, oldStatus, '__deleted__');
+      }
     },
     deleteInvoiceFailure: (state, action) => {
       state.formLoading = false;

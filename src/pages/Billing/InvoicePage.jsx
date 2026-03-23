@@ -7,11 +7,11 @@ import {
   Badge, Dropdown, Statistic, DatePicker, Skeleton,
 } from 'antd';
 import {
-  PlusOutlined, SearchOutlined, EyeOutlined, EditOutlined,
+  PlusOutlined, SearchOutlined, EyeOutlined,
   DeleteOutlined, ReloadOutlined, WifiOutlined, DisconnectOutlined,
   ClockCircleOutlined, FilterOutlined, MoreOutlined,
   FileTextOutlined, CheckCircleOutlined, ExclamationCircleOutlined,
-  DollarOutlined, WarningOutlined,
+  DollarOutlined, WarningOutlined, DownloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -20,6 +20,7 @@ import { fetchInvoicesRequest } from '../../modules/billing/billingSlice';
 import useDebounce from '../../hooks/useDebounce';
 import InvoiceFormDrawer from '../../components/forms/InvoiceFormDrawer';
 import InvoiceDetailDrawer from '../../components/forms/InvoiceDetailDrawer';
+import { downloadInvoicePDF } from '../../utils/invoicePDF';
 
 const { Title, Text } = Typography;
 const { Search }      = Input;
@@ -62,20 +63,19 @@ const FilterBar = styled.div`
 
 // ─── Status config ────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  paid:      { color: 'success', label: 'Paid',      icon: <CheckCircleOutlined /> },
-  unpaid:    { color: 'warning', label: 'Unpaid',    icon: <ExclamationCircleOutlined /> },
-  overdue:   { color: 'error',   label: 'Overdue',   icon: <WarningOutlined /> },
-  cancelled: { color: 'default', label: 'Cancelled', icon: <FileTextOutlined /> },
+  paid:          { color: 'success',    label: 'Paid',      icon: <CheckCircleOutlined /> },
+  unpaid:        { color: 'warning',    label: 'Unpaid',    icon: <ExclamationCircleOutlined /> },
+  pending:       { color: 'warning',    label: 'Pending',   icon: <ExclamationCircleOutlined /> },
+  overdue:       { color: 'error',      label: 'Overdue',   icon: <WarningOutlined /> },
+  cancelled:     { color: 'default',    label: 'Cancelled', icon: <FileTextOutlined /> },
+  partially_paid:{ color: 'processing', label: 'Partial',   icon: <CheckCircleOutlined /> },
+  refunded:      { color: 'purple',     label: 'Refunded',  icon: <CheckCircleOutlined /> },
 };
 
 function StatusTag({ status }) {
   const cfg = STATUS_CONFIG[status] || { color: 'default', label: status };
   return (
-    <Tag
-      color={cfg.color}
-      icon={cfg.icon}
-      style={{ borderRadius: 6, fontWeight: 600, fontSize: 12 }}
-    >
+    <Tag color={cfg.color} icon={cfg.icon} style={{ borderRadius: 6, fontWeight: 600, fontSize: 12 }}>
       {cfg.label}
     </Tag>
   );
@@ -83,15 +83,17 @@ function StatusTag({ status }) {
 
 function formatCurrency(amount) {
   if (amount === null || amount === undefined) return '—';
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: 'INR', maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 function formatDate(d) {
   return d ? dayjs(d).format('DD MMM YYYY') : '—';
 }
 
-// ─── Build dropdown items (antd v6 — items API, no overlay) ──────────────────
-function buildMenuItems({ record, onView, onEdit, onStatusChange, onDelete, canWrite, canDelete }) {
+// ─── Build dropdown items ─────────────────────────────────────────────────────
+function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, canWrite, canDelete }) {
   const items = [
     {
       key: 'view',
@@ -99,9 +101,16 @@ function buildMenuItems({ record, onView, onEdit, onStatusChange, onDelete, canW
       label: 'View Details',
       onClick: () => onView(record),
     },
+    {
+      // Download is always available for any invoice
+      key: 'download',
+      icon: <DownloadOutlined />,
+      label: 'Download PDF',
+      onClick: () => onDownload(record),
+    },
   ];
 
-  if (canWrite && record.status === 'unpaid') {
+  if (canWrite && (record.status === 'unpaid' || record.status === 'pending')) {
     items.push({
       key: 'mark-paid',
       icon: <CheckCircleOutlined />,
@@ -146,7 +155,7 @@ function buildMenuItems({ record, onView, onEdit, onStatusChange, onDelete, canW
 }
 
 // ─── Table columns ────────────────────────────────────────────────────────────
-function buildColumns({ onView, onEdit, onStatusChange, onDelete, canWrite, canDelete }) {
+function buildColumns({ onView, onStatusChange, onDelete, onDownload, canWrite, canDelete }) {
   return [
     {
       title: 'Invoice #',
@@ -205,7 +214,8 @@ function buildColumns({ onView, onEdit, onStatusChange, onDelete, canWrite, canD
       dataIndex: 'due_date',
       key: 'due_date',
       render: (due, record) => {
-        const isOverdue = record.status === 'unpaid' && due && dayjs(due).isBefore(dayjs());
+        const isOverdue = ['unpaid', 'pending'].includes(record.status)
+          && due && dayjs(due).isBefore(dayjs());
         return (
           <Text style={{ color: isOverdue ? '#ff4d4f' : 'inherit', fontSize: 13 }}>
             {formatDate(due)}
@@ -223,7 +233,7 @@ function buildColumns({ onView, onEdit, onStatusChange, onDelete, canWrite, canD
         <Dropdown
           menu={{
             items: buildMenuItems({
-              record, onView, onEdit, onStatusChange, onDelete, canWrite, canDelete,
+              record, onView, onStatusChange, onDelete, onDownload, canWrite, canDelete,
             }),
           }}
           trigger={['click']}
@@ -238,33 +248,29 @@ function buildColumns({ onView, onEdit, onStatusChange, onDelete, canWrite, canD
 
 // ─── Page Component ───────────────────────────────────────────────────────────
 export default function InvoicePage() {
-  const dispatch  = useDispatch();
-  const billing   = useBilling();
+  const dispatch = useDispatch();
+  const billing  = useBilling();
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [searchText,       setSearchText]       = useState('');
   const debouncedSearch = useDebounce(searchText, 400);
 
-  // Destructure before effects
   const applyFilters  = billing.accessDenied ? null : billing.applyFilters;
   const fetchInvoices = billing.accessDenied ? null : billing.fetchInvoices;
   const clearFilters  = billing.accessDenied ? null : billing.clearFilters;
 
-  // Search debounce — unconditional
   useEffect(() => {
     if (!applyFilters) return;
     applyFilters({ search: debouncedSearch });
     dispatch(fetchInvoicesRequest({ page: 1, filters: { search: debouncedSearch } }));
   }, [debouncedSearch]); // eslint-disable-line
 
-  // Load invoices on mount — unconditional, guard inside
   useEffect(() => {
     if (!fetchInvoices) return;
     fetchInvoices({ page: 1 });
   }, [fetchInvoices]);
 
-  // ── RBAC guard — after all hooks ───────────────────────────────────────────
   if (billing.accessDenied) {
     return (
       <PageWrapper>
@@ -287,7 +293,6 @@ export default function InvoicePage() {
     selectInvoice, clearInvoice, dismissError, dismissSuccess,
   } = billing;
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleView = (record) => {
     selectInvoice(record);
     fetchInvoiceById(record.id);
@@ -306,6 +311,11 @@ export default function InvoicePage() {
 
   const handleStatusChange = (payload) => {
     updateInvoiceStatus(payload);
+  };
+
+  // Direct download from row — no need to open drawer
+  const handleDownload = (record) => {
+    downloadInvoicePDF(record);
   };
 
   const handleStatusFilter = (val) => {
@@ -331,10 +341,10 @@ export default function InvoicePage() {
   };
 
   const columns = buildColumns({
-    onView: handleView,
-    onEdit: handleView,
+    onView:         handleView,
     onStatusChange: handleStatusChange,
-    onDelete: deleteInvoice,
+    onDelete:       deleteInvoice,
+    onDownload:     handleDownload,
     canWrite,
     canDelete,
   });
@@ -441,7 +451,7 @@ export default function InvoicePage() {
               <SummaryCard>
                 <Statistic
                   title="Unpaid / Overdue"
-                  value={`${summary.unpaid} / ${summary.overdue}`}
+                  value={`${summary.unpaid ?? 0} / ${summary.overdue ?? 0}`}
                   prefix={<WarningOutlined style={{ color: '#faad14' }} />}
                   valueStyle={{ color: '#faad14' }}
                 />
@@ -480,10 +490,12 @@ export default function InvoicePage() {
             onChange={handleStatusFilter}
             value={filters.status}
           >
+            <Option value="pending">Pending</Option>
             <Option value="unpaid">Unpaid</Option>
             <Option value="paid">Paid</Option>
             <Option value="overdue">Overdue</Option>
             <Option value="cancelled">Cancelled</Option>
+            <Option value="partially_paid">Partial</Option>
           </Select>
           <RangePicker
             style={{ width: 240 }}
@@ -513,9 +525,6 @@ export default function InvoicePage() {
           onRow={(record) => ({
             onDoubleClick: () => handleView(record),
           })}
-          rowClassName={(record) =>
-            record.status === 'overdue' ? 'ant-table-row-overdue' : ''
-          }
           style={{ borderRadius: '0 0 12px 12px' }}
         />
       </TableCard>
