@@ -29,7 +29,7 @@ const NAV_ITEMS = [
     to: '/dashboard',
     label: 'Dashboard',
     Icon: DashboardOutlined,
-    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST],
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST, ROLES.NURSE, ROLES.RECEPTIONIST],
   },
   {
     to: '/patients',

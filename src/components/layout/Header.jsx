@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import {
   HeartFilled,
   MenuOutlined,
@@ -9,6 +9,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import useAuth from '../../modules/auth/hooks/useAuth';
+import useNotification from '../../modules/notifications/hooks/useNotification';
+import NotificationDropdown from '../notifications/NotificationDropdown';
 
 const HEADER_HEIGHT = 64;
 
@@ -69,7 +71,7 @@ const BellWrap = styled.div`
 
 const BellBtn = styled.button`
   background: none; border: none;
-  color: rgba(255,255,255,0.55);
+  color: ${({ $active }) => ($active ? '#fff' : 'rgba(255,255,255,0.55)')};
   font-size: 18px; cursor: pointer;
   padding: 6px 8px; border-radius: 6px;
   transition: color 0.15s, background 0.15s;
@@ -134,8 +136,24 @@ const LogoutBtn = styled.button`
   &:hover { color: #fc8181; background: rgba(252,129,129,0.1); }
 `;
 
-export default function Header({ onMenuToggle, unreadCount = 0 }) {
+export default function Header({ onMenuToggle }) {
   const { user, logout } = useAuth();
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAllLoading,
+    markRead,
+    markAllRead,
+    deleteNotification,
+    isMarking,
+    isDeleting,
+  } = useNotification();
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const toggleDropdown = useCallback(() => setDropdownOpen((o) => !o), []);
+  const closeDropdown  = useCallback(() => setDropdownOpen(false), []);
 
   return (
     <Bar>
@@ -151,10 +169,30 @@ export default function Header({ onMenuToggle, unreadCount = 0 }) {
 
       <Right>
         <BellWrap>
-          <BellBtn title="Notifications">
+          <BellBtn
+            $active={dropdownOpen}
+            onClick={toggleDropdown}
+            title="Notifications"
+            id="notification-bell"
+          >
             <BellOutlined />
           </BellBtn>
-          {unreadCount > 0 && <Badge>{unreadCount}</Badge>}
+          {unreadCount > 0 && <Badge>{unreadCount > 99 ? '99+' : unreadCount}</Badge>}
+
+          {dropdownOpen && (
+            <NotificationDropdown
+              notifications={notifications}
+              unreadCount={unreadCount}
+              loading={loading}
+              markAllLoading={markAllLoading}
+              onMarkRead={markRead}
+              onMarkAllRead={markAllRead}
+              onDelete={deleteNotification}
+              onClose={closeDropdown}
+              isMarking={isMarking}
+              isDeleting={isDeleting}
+            />
+          )}
         </BellWrap>
 
         <Divider />

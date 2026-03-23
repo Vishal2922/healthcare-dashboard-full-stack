@@ -589,6 +589,7 @@ function SkeletonKpis({ count = 4 }) {
 /* ── Main component ────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { user }                  = useAuth();
+  const role                      = user?.role;
   const [stats,   setStats]       = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error,   setError]       = useState(false);
@@ -603,9 +604,58 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Data presence checks — the backend strips fields the role shouldn't see
+  const hasBilling       = stats?.revenue_this_month != null;
+  const hasPatients      = stats?.total_patients != null;
+  const hasAppointments  = stats?.appointments_today != null;
+  const hasPrescriptions = stats?.total_prescriptions != null;
+  const hasStaff         = stats?.active_staff != null;
+
   const recentAppointments  = stats?.recent_appointments  ?? [];
   const recentInvoices      = stats?.recent_invoices      ?? [];
   const recentPrescriptions = stats?.recent_prescriptions ?? [];
+
+  // Build dynamic KPI cards based on available data
+  const overviewKpis = [];
+  if (hasPatients) {
+    overviewKpis.push({
+      label: 'Total Patients',
+      value: n(stats?.total_patients),
+      note:  `${n(stats?.active_patients)} active`,
+      accent: T.sky, bg: T.skyL, icon: '🧑‍⚕️',
+    });
+  }
+  if (hasAppointments) {
+    overviewKpis.push({
+      label: "Today's Appointments",
+      value: n(stats?.appointments_today),
+      note:  `${n(stats?.upcoming_appointments)} scheduled`,
+      accent: T.indigo, bg: T.indigoL, icon: '📅',
+    });
+  }
+  if (hasStaff) {
+    overviewKpis.push({
+      label: 'Active Staff',
+      value: n(stats?.active_staff),
+      note:  'All roles',
+      accent: T.accent, bg: T.accentL, icon: '👥',
+    });
+  }
+  if (hasPrescriptions && !hasBilling) {
+    // Pharmacist-only: show prescription counts in overview since no billing hero
+    overviewKpis.push({
+      label: 'Pending Dispense',
+      value: n(stats?.pending_prescriptions),
+      note:  'Awaiting pharmacist',
+      accent: T.gold, bg: T.goldL, icon: '⏳',
+    });
+    overviewKpis.push({
+      label: 'Dispensed',
+      value: n(stats?.dispensed_prescriptions),
+      note:  'Successfully issued',
+      accent: T.accent, bg: T.accentL, icon: '✅',
+    });
+  }
 
   return (
     <>
@@ -617,8 +667,8 @@ export default function DashboardPage() {
           <HeroInner>
             <HeroLeft>
               <GreetLabel>{greeting()}</GreetLabel>
-              <GreetName>{user?.username || 'Doctor'} 👋</GreetName>
-              <GreetSub>Here's your clinic at a glance.</GreetSub>
+              <GreetName>{user?.username || 'Staff'} 👋</GreetName>
+              {/* <GreetSub>Here's your clinic at a glance.</GreetSub> */}
             </HeroLeft>
             <HeroRight>
               <OnlineDot>Live</OnlineDot>
@@ -637,7 +687,7 @@ export default function DashboardPage() {
             </ErrorCard>
           )}
 
-          {/* ── Primary metrics: 1 hero + 3 KPIs ─────────────────────── */}
+          {/* ── Primary metrics: Hero revenue (Admin only) + KPIs ───── */}
           {!error && (
             <Section $delay="0.05s">
               <SectionHead>
@@ -649,9 +699,9 @@ export default function DashboardPage() {
                 <KpiGrid>
                   {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
                 </KpiGrid>
-              ) : (
+              ) : hasBilling ? (
+                /* Admin: Hero revenue + supporting KPIs */
                 <PrimaryGrid>
-                  {/* Hero revenue card */}
                   <HeroKpi>
                     <HeroKpiTop>
                       <div>
@@ -689,30 +739,7 @@ export default function DashboardPage() {
                     </div>
                   </HeroKpi>
 
-                  {/* 3 supporting KPIs */}
-                  {[
-                    {
-                      label: 'Total Patients',
-                      value: n(stats?.total_patients),
-                      note:  `${n(stats?.active_patients)} active`,
-                      accent: T.sky, bg: T.skyL,
-                      icon: '🧑‍⚕️',
-                    },
-                    {
-                      label: "Today's Appointments",
-                      value: n(stats?.appointments_today),
-                      note:  `${n(stats?.upcoming_appointments)} scheduled`,
-                      accent: T.indigo, bg: T.indigoL,
-                      icon: '📅',
-                    },
-                    {
-                      label: 'Active Staff',
-                      value: n(stats?.active_staff),
-                      note:  'All roles',
-                      accent: T.accent, bg: T.accentL,
-                      icon: '👥',
-                    },
-                  ].map(({ label, value, note, accent, bg, icon }) => (
+                  {overviewKpis.map(({ label, value, note, accent, bg, icon }) => (
                     <KpiCard key={label} $accent={accent}>
                       <KpiTop>
                         <KpiLabel>{label}</KpiLabel>
@@ -723,12 +750,26 @@ export default function DashboardPage() {
                     </KpiCard>
                   ))}
                 </PrimaryGrid>
+              ) : (
+                /* Non-admin roles: KPI-only grid (no revenue hero) */
+                <KpiGrid>
+                  {overviewKpis.map(({ label, value, note, accent, bg, icon }) => (
+                    <KpiCard key={label} $accent={accent}>
+                      <KpiTop>
+                        <KpiLabel>{label}</KpiLabel>
+                        <KpiIcon $bg={bg}>{icon}</KpiIcon>
+                      </KpiTop>
+                      <KpiValue>{value}</KpiValue>
+                      <KpiNote>{note}</KpiNote>
+                    </KpiCard>
+                  ))}
+                </KpiGrid>
               )}
             </Section>
           )}
 
-          {/* ── Prescriptions row ─────────────────────────────────────── */}
-          {!error && (
+          {/* ── Prescriptions KPIs — Admin, Provider, Pharmacist ────── */}
+          {!error && hasPrescriptions && hasBilling && (
             <Section $delay="0.12s">
               <SectionHead>
                 <SectionTitle>Prescriptions</SectionTitle>
@@ -776,7 +817,7 @@ export default function DashboardPage() {
           )}
 
           {/* ── Recent activity: Appointments + Prescriptions ─────────── */}
-          {!loading && !error && (
+          {!loading && !error && (recentAppointments.length > 0 || recentPrescriptions.length > 0) && (
             <Section $delay="0.18s">
               <SectionHead>
                 <SectionTitle>Recent Activity</SectionTitle>
@@ -786,68 +827,66 @@ export default function DashboardPage() {
 
               <TableGrid>
 
-                {/* Appointments */}
-                <Panel>
-                  <PanelHead>
-                    <PanelTitle>
-                      <PanelIcon $bg={T.indigoL}>📅</PanelIcon>
-                      Appointments
-                    </PanelTitle>
-                    <PanelBadge>{recentAppointments.length}</PanelBadge>
-                  </PanelHead>
-                  <HeadRow $cols="1.8fr 1.2fr 72px 90px">
-                    <Cell $head>Patient</Cell>
-                    <Cell $head>Doctor</Cell>
-                    <Cell $head>Time</Cell>
-                    <Cell $head>Status</Cell>
-                  </HeadRow>
-                  {recentAppointments.length === 0
-                    ? <EmptyPanel>No appointments yet</EmptyPanel>
-                    : recentAppointments.map((a) => (
+                {/* Appointments panel — only if role has appointment data */}
+                {recentAppointments.length > 0 && (
+                  <Panel>
+                    <PanelHead>
+                      <PanelTitle>
+                        <PanelIcon $bg={T.indigoL}>📅</PanelIcon>
+                        Appointments
+                      </PanelTitle>
+                      <PanelBadge>{recentAppointments.length}</PanelBadge>
+                    </PanelHead>
+                    <HeadRow $cols="1.8fr 1.2fr 72px 90px">
+                      <Cell $head>Patient</Cell>
+                      <Cell $head>Doctor</Cell>
+                      <Cell $head>Time</Cell>
+                      <Cell $head>Status</Cell>
+                    </HeadRow>
+                    {recentAppointments.map((a) => (
                       <Row key={a.id} $cols="1.8fr 1.2fr 72px 90px">
                         <Cell $bold>{a.patient_name || `#${a.patient_id}`}</Cell>
                         <Cell $muted>{a.doctor_name || `#${a.doctor_id}`}</Cell>
                         <Cell $muted $mono style={{ fontSize: 11 }}>{fmtTime(a.appointment_time)}</Cell>
                         <Cell><StatusTag $s={a.status}>{a.status}</StatusTag></Cell>
                       </Row>
-                    ))
-                  }
-                </Panel>
+                    ))}
+                  </Panel>
+                )}
 
-                {/* Prescriptions */}
-                <Panel>
-                  <PanelHead>
-                    <PanelTitle>
-                      <PanelIcon $bg={T.accentL}>💊</PanelIcon>
-                      Prescriptions
-                    </PanelTitle>
-                    <PanelBadge>{recentPrescriptions.length}</PanelBadge>
-                  </PanelHead>
-                  <HeadRow $cols="1.8fr 1.6fr 60px 90px">
-                    <Cell $head>Patient</Cell>
-                    <Cell $head>Medicine</Cell>
-                    <Cell $head>Days</Cell>
-                    <Cell $head>Status</Cell>
-                  </HeadRow>
-                  {recentPrescriptions.length === 0
-                    ? <EmptyPanel>No prescriptions yet</EmptyPanel>
-                    : recentPrescriptions.map((p) => (
+                {/* Prescriptions panel — only if role has prescription data */}
+                {recentPrescriptions.length > 0 && (
+                  <Panel>
+                    <PanelHead>
+                      <PanelTitle>
+                        <PanelIcon $bg={T.accentL}>💊</PanelIcon>
+                        Prescriptions
+                      </PanelTitle>
+                      <PanelBadge>{recentPrescriptions.length}</PanelBadge>
+                    </PanelHead>
+                    <HeadRow $cols="1.8fr 1.6fr 60px 90px">
+                      <Cell $head>Patient</Cell>
+                      <Cell $head>Medicine</Cell>
+                      <Cell $head>Days</Cell>
+                      <Cell $head>Status</Cell>
+                    </HeadRow>
+                    {recentPrescriptions.map((p) => (
                       <Row key={p.id} $cols="1.8fr 1.6fr 60px 90px">
                         <Cell $bold>{p.patient_name || `#${p.patient_id}`}</Cell>
                         <Cell $muted style={{ fontSize: 12 }}>{p.medicine_name || '—'}</Cell>
                         <Cell $muted $mono style={{ fontSize: 11 }}>{p.duration_days ?? '—'}d</Cell>
                         <Cell><StatusTag $s={p.status}>{p.status}</StatusTag></Cell>
                       </Row>
-                    ))
-                  }
-                </Panel>
+                    ))}
+                  </Panel>
+                )}
 
               </TableGrid>
             </Section>
           )}
 
-          {/* ── Recent Invoices — full width ──────────────────────────── */}
-          {!loading && !error && (
+          {/* ── Recent Invoices — Admin only ──────────────────────────── */}
+          {!loading && !error && recentInvoices.length > 0 && (
             <Section $delay="0.22s">
               <SectionHead>
                 <SectionTitle>Recent Invoices</SectionTitle>
@@ -863,24 +902,21 @@ export default function DashboardPage() {
                   <Cell $head>Due</Cell>
                   <Cell $head>Status</Cell>
                 </HeadRow>
-                {recentInvoices.length === 0
-                  ? <EmptyPanel>No invoices found</EmptyPanel>
-                  : recentInvoices.map((inv) => (
-                    <Row key={inv.id} $cols="1.4fr 2fr 1fr 1fr 1fr">
-                      <Cell $bold $mono style={{ fontSize: 12 }}>
-                        {inv.invoice_number || `INV-${String(inv.id).padStart(4, '0')}`}
-                      </Cell>
-                      <Cell>{inv.patient_name || '—'}</Cell>
-                      <Cell $bold style={{ fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-                        {fmt(inv.total_amount ?? inv.amount)}
-                      </Cell>
-                      <Cell $muted style={{ fontFamily: "'DM Mono', monospace", fontSize: 11 }}>
-                        {fmtDate(inv.due_date)}
-                      </Cell>
-                      <Cell><StatusTag $s={inv.status}>{inv.status}</StatusTag></Cell>
-                    </Row>
-                  ))
-                }
+                {recentInvoices.map((inv) => (
+                  <Row key={inv.id} $cols="1.4fr 2fr 1fr 1fr 1fr">
+                    <Cell $bold $mono style={{ fontSize: 12 }}>
+                      {inv.invoice_number || `INV-${String(inv.id).padStart(4, '0')}`}
+                    </Cell>
+                    <Cell>{inv.patient_name || '—'}</Cell>
+                    <Cell $bold style={{ fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+                      {fmt(inv.total_amount ?? inv.amount)}
+                    </Cell>
+                    <Cell $muted style={{ fontFamily: "'DM Mono', monospace", fontSize: 11 }}>
+                      {fmtDate(inv.due_date)}
+                    </Cell>
+                    <Cell><StatusTag $s={inv.status}>{inv.status}</StatusTag></Cell>
+                  </Row>
+                ))}
               </WidePanel>
             </Section>
           )}

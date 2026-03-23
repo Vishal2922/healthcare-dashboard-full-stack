@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import useAppointments from '../../modules/appointments/hooks/useAppointments';
+import usePatients from '../../modules/patients/hooks/usePatients';
+import useUsers from '../../modules/users/hooks/useUsers';
 import AppointmentForm from '../../components/forms/AppointmentForm';
+import AppointmentNotesDrawer from '../../components/communication/AppointmentNotesDrawer';
 import usePermission from '../../hooks/usePermission';
 
 export default function AppointmentList() {
@@ -12,6 +15,9 @@ export default function AppointmentList() {
     bookingSuccess, resetBooking,
   } = useAppointments();
 
+  const { patientList, fetchPatients } = usePatients();
+  const { allUsers, fetchAllUsers } = useUsers();
+
   const { can } = usePermission();
 
   const canCreate       = can('appointments', 'create');
@@ -19,8 +25,15 @@ export default function AppointmentList() {
   const canUpdateStatus = can('appointments', 'updateStatus');
 
   const [showBookModal, setShowBookModal] = useState(false);
+  const [notesApptId, setNotesApptId]     = useState(null);
 
-  useEffect(() => { loadAppointments({ page: 1 }); }, []); // eslint-disable-line
+  useEffect(() => { 
+    loadAppointments({ page: 1 }); 
+    if (canCreate) {
+      if (fetchPatients) fetchPatients({ per_page: 100 });
+      if (fetchAllUsers) fetchAllUsers();
+    }
+  }, []); // eslint-disable-line
 
   // Close modal and refresh list after successful booking
   useEffect(() => {
@@ -253,6 +266,9 @@ export default function AppointmentList() {
                               ✕ Cancel
                             </button>
                           )}
+                          <button style={S.notesBtn} onClick={() => setNotesApptId(appt.id)}>
+                            📝 Notes
+                          </button>
                         </div>
                       )}
                     </td>
@@ -268,7 +284,19 @@ export default function AppointmentList() {
 
       {/* ── Book Appointment Modal ───────────────────────────────────────────── */}
       {canCreate && showBookModal && (
-        <AppointmentForm onClose={() => setShowBookModal(false)} />
+        <AppointmentForm 
+          onClose={() => setShowBookModal(false)} 
+          patients={patientList || []}
+          doctors={(allUsers || []).filter(u => u.role_name === 'Provider')}
+        />
+      )}
+
+      {/* ── Appointment Notes Drawer ──────────────────────────────────────────── */}
+      {notesApptId && (
+        <AppointmentNotesDrawer
+          appointmentId={notesApptId}
+          onClose={() => setNotesApptId(null)}
+        />
       )}
     </div>
   );
@@ -295,6 +323,7 @@ const S = {
   idBadge:      { display: 'inline-block', fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#4a5568', background: '#edf2f7', borderRadius: 5, padding: '2px 7px', letterSpacing: 0.3 },
   actionBtn:    { padding: '4px 10px', borderRadius: 6, border: '1px solid #bee3f8', background: '#ebf8ff', color: '#2b6cb0', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   cancelBtn:    { padding: '4px 10px', borderRadius: 6, border: '1px solid #fed7d7', background: '#fff5f5', color: '#c53030', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  notesBtn:     { padding: '4px 10px', borderRadius: 6, border: '1px solid #c6f6d5', background: '#f0fff4', color: '#276749', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   empty:        { textAlign: 'center', padding: '60px 20px', color: '#a0aec0', fontSize: 14 },
   inlineLink:   { background: 'none', border: 'none', color: '#3182ce', cursor: 'pointer', fontSize: 14, textDecoration: 'underline', padding: 0 },
   pageBtn:      { padding: '6px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#4a5568', fontSize: 13, cursor: 'pointer' },

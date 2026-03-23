@@ -30,11 +30,14 @@ function* handleFetchUsers(action) {
     const filters  = yield select((state) => state.users.filters);
     const params   = { ...filters, ...(action.payload ?? {}) };
     const response = yield call(fetchUsersAPI, params);
-    const data     = response?.data ?? response;
+    // fetchUsersAPI returns response.data (axios-unwrapped):
+    //   { message, data: { staff: [...], pagination: {...} } }
+    // So the actual payload is one level deeper at .data
+    const payload  = response?.data ?? response;
     yield put(
       fetchUsersSuccess({
-        staff:      data.staff      ?? data.users ?? [],
-        pagination: data.pagination ?? {
+        staff:      payload.staff      ?? payload.users ?? [],
+        pagination: payload.pagination ?? {
           total: 0, page: params.page ?? 1,
           per_page: params.per_page ?? 20, total_pages: 0,
         },
@@ -47,15 +50,15 @@ function* handleFetchUsers(action) {
 
 // ── 2. Fetch ALL Users (for Add Staff picker dropdown) ────────────────────────
 //    GET /api/users  — all registered users in this tenant
-//    This is separate from staff list. Used so admin can pick which
-//    existing user to promote to a staff record.
 function* handleFetchAllUsers(action) {
   try {
     const params   = action.payload ?? { per_page: 100 };
     const response = yield call(fetchAllUsersAPI, params);
-    const data     = response?.data ?? response;
-    // Backend UserController::index returns { users: [...], pagination: {...} }
-    const users = data.users ?? data.staff ?? [];
+    // fetchAllUsersAPI returns response.data (axios-unwrapped):
+    //   { message, data: { users: [...], pagination: {...} } }
+    // The actual users array is at .data  ← was the bug (missed one level)
+    const payload = response?.data ?? response;
+    const users   = payload.users ?? payload.staff ?? [];
     yield put(fetchAllUsersSuccess(users));
   } catch (error) {
     yield put(fetchAllUsersFailure(extractMessage(error, 'Failed to load users.')));
@@ -100,7 +103,6 @@ function* handleUpdateUser(action) {
 }
 
 // ── 6. Delete Staff Member ────────────────────────────────────────────────────
-// FIX Bug 2: takeEvery — deleting two rows quickly won't cancel the first
 function* handleDeleteUser(action) {
   try {
     yield call(deleteUserAPI, action.payload);
@@ -111,7 +113,6 @@ function* handleDeleteUser(action) {
 }
 
 // ── 7. Toggle Active / Inactive ───────────────────────────────────────────────
-// FIX Bug 2: takeEvery — toggling two rows quickly won't cancel the first
 function* handleToggleStatus(action) {
   try {
     const { id, currentStatus } = action.payload;
@@ -124,7 +125,6 @@ function* handleToggleStatus(action) {
 }
 
 // ── 8. Fetch Roles ────────────────────────────────────────────────────────────
-// FIX Bug 4: correct unwrap → response?.data?.roles
 function* handleFetchRoles() {
   try {
     const response = yield call(fetchRolesAPI);
@@ -136,7 +136,6 @@ function* handleFetchRoles() {
 }
 
 // ── 9. Fetch Departments ──────────────────────────────────────────────────────
-// FIX Bug 3: correct unwrap → response?.data?.departments
 function* handleFetchDepartments() {
   try {
     const response    = yield call(fetchDepartmentsAPI);
@@ -150,12 +149,12 @@ function* handleFetchDepartments() {
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function* userSaga() {
   yield takeLatest(fetchUsersRequest.type,        handleFetchUsers);
-  yield takeLatest(fetchAllUsersRequest.type,     handleFetchAllUsers);   // NEW
+  yield takeLatest(fetchAllUsersRequest.type,     handleFetchAllUsers);
   yield takeLatest(fetchUserRequest.type,         handleFetchUser);
   yield takeLatest(createUserRequest.type,        handleCreateUser);
   yield takeLatest(updateUserRequest.type,        handleUpdateUser);
-  yield takeEvery(deleteUserRequest.type,         handleDeleteUser);       // FIX Bug 2
-  yield takeEvery(toggleUserStatusRequest.type,   handleToggleStatus);     // FIX Bug 2
+  yield takeEvery(deleteUserRequest.type,         handleDeleteUser);
+  yield takeEvery(toggleUserStatusRequest.type,   handleToggleStatus);
   yield takeLatest(fetchRolesRequest.type,        handleFetchRoles);
   yield takeLatest(fetchDepartmentsRequest.type,  handleFetchDepartments);
 }

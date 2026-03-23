@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import useAppointments from '../../modules/appointments/hooks/useAppointments';
+import usePatients from '../../modules/patients/hooks/usePatients';
+import useUsers from '../../modules/users/hooks/useUsers';
 import AppointmentForm from '../../components/forms/AppointmentForm';
 
 export default function AppointmentCalendar() {
@@ -8,13 +10,20 @@ export default function AppointmentCalendar() {
     loadAppointments, updateStatus, cancelAppointment, isRowLoading, clearError,
   } = useAppointments();
 
+  const { patientList, fetchPatients } = usePatients();
+  const { allUsers, fetchAllUsers } = useUsers();
+
   const today = new Date();
   const [view, setView] = useState('month');
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [showBookModal, setShowBookModal] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState(null);
 
-  useEffect(() => { loadAppointments({ page: 1, perPage: 100 }); }, [currentDate]); // eslint-disable-line
+  useEffect(() => {
+    loadAppointments({ page: 1, perPage: 100 });
+    if (fetchPatients) fetchPatients({ per_page: 100 });
+    if (fetchAllUsers) fetchAllUsers();
+  }, [currentDate]); // eslint-disable-line
 
   const navigate = (dir) => setCurrentDate((d) => {
     const n = new Date(d);
@@ -229,7 +238,13 @@ export default function AppointmentCalendar() {
       </div>
 
       <DetailPanel />
-      {showBookModal && <AppointmentForm onClose={() => setShowBookModal(false)} doctors={[]} patients={[]} />}
+      {showBookModal && (
+        <AppointmentForm
+          onClose={() => setShowBookModal(false)}
+          patients={patientList || []}
+          doctors={(allUsers || []).filter(u => u.role_name === 'Provider')}
+        />
+      )}
     </div>
   );
 }

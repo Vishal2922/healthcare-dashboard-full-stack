@@ -39,7 +39,6 @@ export default function DashboardLayout({ children }) {
     <Wrapper>
       <Header
         onMenuToggle={() => setSidebarOpen((o) => !o)}
-        unreadCount={0}
       />
       <Sidebar isOpen={sidebarOpen} />
       <Main $sidebarOpen={sidebarOpen}>

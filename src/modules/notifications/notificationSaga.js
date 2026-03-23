@@ -4,6 +4,7 @@ import {
   put,
   fork,
   delay,
+  select,
   takeLatest,
   takeEvery,
 } from 'redux-saga/effects';
@@ -127,20 +128,36 @@ function* handleDeleteNotification(action) {
 //    Will silently skip failed polls (network errors, 401 while refreshing).
 // ════════════════════════════════════════════════════════════════════════════
 function* watchUnreadCount() {
-  // Initial wait — let the app settle before first poll
-  yield delay(5000);
+  // Let the app fully settle before first poll
+  yield delay(15000);
+
+  let consecutiveFailures = 0;
 
   while (true) {
     try {
+      // Skip polling if user is not logged in
+      const isLoggedIn = yield select((state) => !!state.auth?.accessToken);
+      if (!isLoggedIn) {
+        yield delay(UNREAD_POLL_INTERVAL);
+        continue;
+      }
+
       const response = yield call(fetchUnreadCountAPI);
       const data     = response?.data ?? response;
       const count    = data?.unread_count ?? 0;
       yield put(setUnreadCount(count));
+      consecutiveFailures = 0; // Reset on success
     } catch (_) {
-      // Silent — badge will update on next successful poll
+      // Exponential backoff on failures: 60s, 120s, 240s, max 300s
+      consecutiveFailures += 1;
     }
 
-    yield delay(UNREAD_POLL_INTERVAL);
+    // Wait longer if failing repeatedly
+    const backoff = Math.min(
+      UNREAD_POLL_INTERVAL * Math.pow(2, consecutiveFailures),
+      5 * 60 * 1000 // max 5 minutes
+    );
+    yield delay(backoff);
   }
 }
 

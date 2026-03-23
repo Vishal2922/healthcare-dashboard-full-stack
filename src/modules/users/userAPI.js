@@ -39,9 +39,11 @@ export const fetchUserByIdAPI = async (id) => {
   return response.data;
 };
 
-// ─── POST /api/staff ─────────────────────────────────────────────────────────
+// ─── POST — Register user account + create staff profile in one shot ─────────
+// Step 1: POST /api/auth/register  → creates user account, returns user_id
+// Step 2: POST /api/staff          → links user_id to a staff record
 export const createUserAPI = async (data) => {
-  // Step 1 — Register user account
+  // Step 1 — Register the user account
   const registerResponse = await axiosClient.post('/api/auth/register', {
     username:  data.username,
     email:     data.email,
@@ -51,13 +53,13 @@ export const createUserAPI = async (data) => {
   });
 
   const registerData = registerResponse.data?.data || registerResponse.data;
-  const userId = registerData.user_id;
+  const userId = registerData?.user_id;
 
   if (!userId) {
-    throw new Error('Registration succeeded but no user_id returned');
+    throw new Error('Registration succeeded but no user_id was returned.');
   }
 
-  // Step 2 — Create staff profile linked to the new user
+  // Step 2 — Create the staff profile linked to the new user
   const staffResponse = await axiosClient.post('/api/staff', {
     user_id:        userId,
     role_id:        data.role_id        || undefined,

@@ -3,7 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import {
   UserAddOutlined, SearchOutlined, EditOutlined,
   DeleteOutlined, CheckCircleOutlined, StopOutlined,
-  CloseOutlined, TeamOutlined, LoadingOutlined,
+  CloseOutlined, TeamOutlined,
 } from '@ant-design/icons';
 import useUsers from '../../modules/users/hooks/useUsers';
 import usePermission from '../../hooks/usePermission';
@@ -73,15 +73,26 @@ const roleBadgeVariant = (role = '') => {
   return 'default';
 };
 
-const EMPTY_FORM = { user_id: '', role_id: '', department: '', specialization: '', hire_date: '', status: 'active' };
+const EMPTY_FORM = {
+  // User account fields (for registration)
+  username:       '',
+  email:          '',
+  password:       '',
+  full_name:      '',
+  // Staff profile fields
+  role_id:        '',
+  department:     '',
+  specialization: '',
+  hire_date:      '',
+  status:         'active',
+};
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function UserManagement() {
   const {
     users, pagination, loading, submitting, error,
-    allUsers, allUsersLoading,
     roles, departments,
-    fetchUsers, fetchAllUsers,
+    fetchUsers,
     createUser, updateUser, deleteUser, toggleStatus,
     fetchRoles, fetchDepartments, dismissError,
   } = useUsers();
@@ -128,8 +139,6 @@ export default function UserManagement() {
   const openCreate = () => {
     setForm(EMPTY_FORM);
     setEditId(null);
-    // Load all registered users for the picker dropdown
-    fetchAllUsers({ per_page: 100 });
     setModal('create');
   };
 
@@ -257,7 +266,7 @@ export default function UserManagement() {
                     <EmptyIcon><TeamOutlined /></EmptyIcon>
                     <EmptyTitle>No staff members yet</EmptyTitle>
                     <EmptyText>
-                      Click "Add Staff Member" to link an existing user account to a staff record.
+                      Click "Add Staff Member" to create a new staff account.
                     </EmptyText>
                   </EmptyState>
                 </CenterCell>
@@ -335,8 +344,9 @@ export default function UserManagement() {
       </TableWrap>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          CREATE MODAL — Fixed: uses Overlay with overflow-y:auto so modal
-          never clips, user picker loads from /api/users separately.
+          CREATE MODAL — Creates a brand new user account + staff profile.
+          Step 1: POST /api/auth/register  (username, email, password, full_name, role_id)
+          Step 2: POST /api/staff          (user_id from step 1 + dept, hire_date, etc.)
       ══════════════════════════════════════════════════════════════════════ */}
       {modal === 'create' && (
         <Overlay onClick={closeModal}>
@@ -349,52 +359,77 @@ export default function UserManagement() {
             <form onSubmit={handleSubmit}>
               <FormGrid>
 
-                {/* User picker — loads from GET /api/users */}
+                {/* ── Account section ─────────────────────────────── */}
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: '#a0aab4', marginBottom: -8 }}>
+                  Account Details
+                </div>
+
                 <Field>
-                  <FieldLabel htmlFor="user_id">
-                    Select User *
-                    {allUsersLoading && (
-                      <span style={{ marginLeft: 8, color: '#20b486' }}>
-                        <LoadingOutlined spin />
-                      </span>
-                    )}
-                  </FieldLabel>
-                  <FieldSelect
-                    id="user_id"
-                    value={form.user_id}
-                    onChange={e => setForm({ ...form, user_id: e.target.value })}
+                  <FieldLabel htmlFor="full_name">Full Name *</FieldLabel>
+                  <FieldInput
+                    id="full_name"
+                    placeholder="e.g. Dr. Priya Sharma"
+                    value={form.full_name}
+                    onChange={e => setForm({ ...form, full_name: e.target.value })}
                     required
-                    disabled={allUsersLoading}
-                  >
-                    <option value="">
-                      {allUsersLoading ? 'Loading users…' : 'Choose an existing user…'}
-                    </option>
-                    {allUsers.map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.username}
-                        {u.full_name  ? ` — ${u.full_name}`  : ''}
-                        {u.role_name  ? ` (${u.role_name})`  : ''}
-                      </option>
-                    ))}
-                  </FieldSelect>
-                  <HelpText>
-                    Only users registered in this tenant appear here.
-                    Go to the Auth module to register a new user first.
-                  </HelpText>
-                  {!allUsersLoading && allUsers.length === 0 && (
-                    <HelpText style={{ color: '#c53030' }}>
-                      No users found. Register a user account first before adding staff.
-                    </HelpText>
-                  )}
+                  />
                 </Field>
 
-                {/* Role */}
                 <Field>
-                  <FieldLabel htmlFor="role_id">Role</FieldLabel>
+                  <FieldLabel htmlFor="username">Username *</FieldLabel>
+                  <FieldInput
+                    id="username"
+                    placeholder="e.g. dr.priya"
+                    value={form.username}
+                    onChange={e => setForm({ ...form, username: e.target.value })}
+                    required
+                    autoComplete="off"
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="email">Email *</FieldLabel>
+                  <FieldInput
+                    id="email"
+                    type="email"
+                    placeholder="priya@clinic.com"
+                    value={form.email}
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    required
+                    autoComplete="off"
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="password">Password *</FieldLabel>
+                  <FieldInput
+                    id="password"
+                    type="password"
+                    placeholder="Min 8 chars, upper, lower, number, special"
+                    value={form.password}
+                    onChange={e => setForm({ ...form, password: e.target.value })}
+                    required
+                    autoComplete="new-password"
+                  />
+                  <HelpText>
+                    Must contain uppercase, lowercase, number and a special character (@$!%*?&).
+                  </HelpText>
+                </Field>
+
+                {/* ── Staff Profile section ────────────────────────── */}
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: '#a0aab4', marginBottom: -8, marginTop: 4 }}>
+                  Staff Profile
+                </div>
+
+                <Field>
+                  <FieldLabel htmlFor="role_id">Role *</FieldLabel>
                   <FieldSelect
                     id="role_id"
                     value={form.role_id}
                     onChange={e => setForm({ ...form, role_id: e.target.value })}
+                    required
                   >
                     <option value="">Select role…</option>
                     {roles.map(r => (
@@ -403,13 +438,12 @@ export default function UserManagement() {
                   </FieldSelect>
                 </Field>
 
-                {/* Department */}
                 <Field>
                   <FieldLabel htmlFor="department">Department</FieldLabel>
                   <FieldInput
                     id="department"
                     list="dept-opts"
-                    placeholder="e.g. Cardiology"
+                    placeholder="e.g. General Medicine"
                     value={form.department}
                     onChange={e => setForm({ ...form, department: e.target.value })}
                   />
@@ -418,7 +452,6 @@ export default function UserManagement() {
                   </datalist>
                 </Field>
 
-                {/* Specialization */}
                 <Field>
                   <FieldLabel htmlFor="specialization">Specialization</FieldLabel>
                   <FieldInput
@@ -429,7 +462,6 @@ export default function UserManagement() {
                   />
                 </Field>
 
-                {/* Hire Date */}
                 <Field>
                   <FieldLabel htmlFor="hire_date">Hire Date</FieldLabel>
                   <FieldInput
@@ -440,7 +472,6 @@ export default function UserManagement() {
                   />
                 </Field>
 
-                {/* Status */}
                 <Field>
                   <FieldLabel htmlFor="status">Status</FieldLabel>
                   <FieldSelect
@@ -457,8 +488,11 @@ export default function UserManagement() {
 
               <ModalFooter>
                 <CancelBtn type="button" onClick={closeModal}>Cancel</CancelBtn>
-                <PrimaryBtn type="submit" disabled={submitting || allUsersLoading || !form.user_id}>
-                  {submitting ? 'Adding…' : 'Add Staff Member'}
+                <PrimaryBtn
+                  type="submit"
+                  disabled={submitting || !form.username || !form.email || !form.password || !form.full_name}
+                >
+                  {submitting ? 'Creating…' : 'Create Staff Member'}
                 </PrimaryBtn>
               </ModalFooter>
             </form>

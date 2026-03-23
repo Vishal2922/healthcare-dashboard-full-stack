@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import {
   fetchNotificationsRequest,
@@ -23,11 +23,12 @@ import {
  *   notifs.markAllRead();
  *   notifs.deleteNotification(id);
  *
- * Auto-loads on first mount (first page only).
+ * Auto-loads ONCE on first mount. Ref-guarded to prevent repeat fetches.
  * All hooks called unconditionally (Rules of Hooks).
  */
 export default function useNotification() {
   const dispatch = useDispatch();
+  const hasFetched = useRef(false);
 
   // ── All selectors unconditional ──────────────────────────────────────────
   const notifications = useSelector((s) => s.notifications.notifications);
@@ -40,9 +41,12 @@ export default function useNotification() {
   const error         = useSelector((s) => s.notifications.error);
   const successMsg    = useSelector((s) => s.notifications.successMessage);
 
-  // ── Auto-load on mount ───────────────────────────────────────────────────
+  // ── Auto-load ONCE on mount (ref-guarded) ─────────────────────────────────
   useEffect(() => {
-    dispatch(fetchNotificationsRequest({ page: 1, per_page: 20 }));
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      dispatch(fetchNotificationsRequest({ page: 1, per_page: 20 }));
+    }
   }, [dispatch]);
 
   // ── All useCallbacks unconditional ───────────────────────────────────────

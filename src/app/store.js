@@ -9,6 +9,7 @@ import prescriptionReducer from '../modules/prescriptions/prescriptionSlice';
 import billingReducer     from '../modules/billing/billingSlice'; // ← NEW (Module 11)
 import chatReducer         from '../modules/chat/chatSlice';
 import notificationReducer from '../modules/notifications/notificationSlice';
+import communicationReducer from '../modules/communication/communicationSlice';
  
 import rootSaga from './rootSaga';
  
@@ -25,6 +26,7 @@ const store = configureStore({
     billing:       billingReducer,
     chat:          chatReducer,
     notifications: notificationReducer,
+    communication: communicationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ thunk: false }).concat(sagaMiddleware),
