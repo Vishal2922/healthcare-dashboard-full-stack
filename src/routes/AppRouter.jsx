@@ -15,6 +15,7 @@ const AppointmentCalendar = lazy(() => import('../pages/Appointments/Appointment
 const InvoicePage         = lazy(() => import('../pages/Billing/InvoicePage'));
 const StaffManagement     = lazy(() => import('../pages/Staff/StaffManagement'));
 const UserManagement      = lazy(() => import('../pages/Settings/UserManagement'));
+const ThemeSettings       = lazy(() => import('../pages/Settings/ThemeSettings'));
 const ForgotPassword      = lazy(() => import('../pages/Auth/ForgotPassword'));
 const PrescriptionList    = lazy(() => import('../pages/Prescriptions/PrescriptionList'));
 
@@ -67,8 +68,8 @@ export default function AppRouter() {
             <Route path="/appointments" element={<AppointmentList />} />
           </Route>
 
-          {/* Module 12: Calendar — Receptionist */}
-          <Route element={<RoleBasedRoute roles={['Receptionist']} />}>
+          {/* Module 12: Calendar — Receptionist, Admin */}
+          <Route element={<RoleBasedRoute roles={['Receptionist', 'Admin']} />}>
             <Route path="/appointments/calendar" element={<AppointmentCalendar />} />
           </Route>
 
@@ -84,12 +85,16 @@ export default function AppRouter() {
 
           {/* Module 6: Staff — Admin only */}
           <Route element={<RoleBasedRoute roles={['Admin']} />}>
-            <Route path="/staff" element={<StaffManagement />} />
+            <Route path="/settings/staff" element={<StaffManagement />} />
           </Route>
 
           {/* Settings — Admin only */}
           <Route element={<RoleBasedRoute roles={['Admin']} />}>
             <Route path="/settings/users" element={<UserManagement />} />
+          </Route>
+
+          <Route element={<RoleBasedRoute roles={['Admin']} />}>
+            <Route path="/settings/theme" element={<ThemeSettings />} />
           </Route>
 
         </Route>

@@ -9,7 +9,7 @@ const HEADER_HEIGHT = 64;
 
 const Wrapper = styled.div`
   min-height: 100vh;
-  background: #f7f5f0;
+  background: ${({ theme }) => theme.colors.background || '#f7f5f0'};
   font-family: 'DM Sans', sans-serif;
   display: flex;
   flex-direction: column;
@@ -22,7 +22,7 @@ const Main = styled.main`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #f7f5f0;
+  background: ${({ theme }) => theme.colors.background || '#f7f5f0'};
   min-height: calc(100vh - ${HEADER_HEIGHT}px);
 `;
 

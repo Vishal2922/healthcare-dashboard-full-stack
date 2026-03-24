@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -10,6 +9,7 @@ import {
   MedicineBoxOutlined,
   UserOutlined,
   FileTextOutlined,
+  BgColorsOutlined,
 } from '@ant-design/icons';
 import useAuth from '../../modules/auth/hooks/useAuth';
 
@@ -47,7 +47,7 @@ const NAV_ITEMS = [
     to: '/appointments/calendar',
     label: 'Calendar',
     Icon: CalendarOutlined,
-    roles: [ROLES.RECEPTIONIST],
+    roles: [ROLES.RECEPTIONIST, ROLES.ADMIN],
   },
   {
     to: '/prescriptions',
@@ -62,7 +62,7 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN],
   },
   {
-    to: '/staff',
+    to: '/settings/staff',
     label: 'Staff',
     Icon: MedicineBoxOutlined,
     roles: [ROLES.ADMIN],
@@ -73,9 +73,15 @@ const NAV_ITEMS = [
     Icon: UserOutlined,
     roles: [ROLES.ADMIN],
   },
+  {
+    to: '/settings/theme',
+    label: 'Brand Color',
+    Icon: BgColorsOutlined,
+    roles: [ROLES.ADMIN],
+  },
 ];
 
-const SETTINGS_PATHS = ['/settings/users'];
+const SETTINGS_PATHS = ['/settings/users', '/settings/staff', '/settings/theme'];
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 const Nav = styled.aside`
@@ -84,11 +90,11 @@ const Nav = styled.aside`
   left: 0;
   width: ${({ $open }) => ($open ? `${SIDEBAR_WIDTH}px` : '0')};
   height: calc(100vh - ${HEADER_HEIGHT}px);
-  background: #fff;
-  border-right: 1px solid #edf2f7;
+  background: ${({ theme }) => theme.colors.sidebarBg || '#fff'};
+  border-right: 1px solid ${({ theme }) => theme.colors.sidebarBorder || theme.colors.border};
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width 0.25s ease;
+  transition: width 0.25s ease, background 0.25s ease;
   z-index: 100;
 `;
 
@@ -103,34 +109,42 @@ const SectionLabel = styled.div`
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #a0aab4;
+  color: ${({ theme }) => theme.colors.textSecondary || '#a0aab4'};
   padding: 16px 20px 6px;
   white-space: nowrap;
+  opacity: 0.7;
 `;
-
-const navLinkStyle = ({ isActive }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  padding: '10px 20px',
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 14,
-  fontWeight: isActive ? 600 : 400,
-  color: isActive ? '#0e1b2a' : '#718096',
-  background: isActive ? '#f0fdf9' : 'transparent',
-  borderLeft: isActive ? '3px solid #20b486' : '3px solid transparent',
-  textDecoration: 'none',
-  whiteSpace: 'nowrap',
-  transition: 'all 0.15s',
-});
 
 export default function Sidebar({ isOpen }) {
   const { user } = useAuth();
   const role = user?.role;
+  const theme = useTheme();
 
   const visible       = NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
   const mainItems     = visible.filter((i) => !SETTINGS_PATHS.includes(i.to));
   const settingsItems = visible.filter((i) => SETTINGS_PATHS.includes(i.to));
+
+  const navLinkStyle = ({ isActive }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 20px',
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 14,
+    fontWeight: isActive ? 600 : 400,
+    color: isActive
+      ? (theme.colors.sidebarTextActive || '#0e1b2a')
+      : (theme.colors.sidebarText || '#718096'),
+    background: isActive
+      ? (theme.colors.sidebarActiveBg || '#f0fdf9')
+      : 'transparent',
+    borderLeft: isActive
+      ? `3px solid ${theme.colors.primary}`
+      : '3px solid transparent',
+    textDecoration: 'none',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.15s',
+  });
 
   return (
     <Nav $open={isOpen}>

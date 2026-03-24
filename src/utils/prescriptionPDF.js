@@ -21,6 +21,7 @@ export function downloadPrescriptionPDF(rx, clinicInfo = {}) {
     phone:      clinicInfo.phone      || '+91 98765 43210',
     email:      clinicInfo.email      || 'contact@clinicos.health',
     doctorName: clinicInfo.doctorName || rx.provider_name || 'Attending Physician',
+    themeColor: clinicInfo.themeColor || '#20b486',
   };
 
   const today      = new Date();
@@ -77,7 +78,7 @@ export function downloadPrescriptionPDF(rx, clinicInfo = {}) {
     }
     .logo-icon {
       width: 44px; height: 44px;
-      background: #20b486;
+      background: ${clinic.themeColor};
       border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       color: #fff; font-size: 22px; font-weight: 700;
@@ -168,7 +169,7 @@ export function downloadPrescriptionPDF(rx, clinicInfo = {}) {
     .rx-symbol {
       font-size: 28px;
       font-weight: 300;
-      color: #20b486;
+      color: ${clinic.themeColor};
       font-style: italic;
       margin-bottom: 12px;
       border-bottom: 1px solid #e2e8f0;
@@ -185,7 +186,7 @@ export function downloadPrescriptionPDF(rx, clinicInfo = {}) {
     .medicine-number {
       font-size: 10px;
       font-weight: 700;
-      color: #20b486;
+      color: ${clinic.themeColor};
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 6px;

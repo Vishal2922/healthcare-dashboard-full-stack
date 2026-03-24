@@ -17,7 +17,7 @@ const PageTitle     = styled.h1`font-size:22px;font-weight:600;color:#0e1b2a;mar
 const TitleIcon     = styled.span`width:36px;height:36px;border-radius:10px;background:#0e1b2a;color:white;display:flex;align-items:center;justify-content:center;font-size:16px;`;
 const PageSub       = styled.p`font-size:14px;color:#718096;margin:0 0 2rem;`;
 const RoleGrid      = styled.div`display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:2.5rem;`;
-const RoleCard      = styled.div`background:white;border:1.5px solid ${({$active})=>$active?'#20b486':'#e2e8f0'};border-radius:14px;padding:1.25rem;cursor:pointer;transition:border-color 0.18s,box-shadow 0.18s;box-shadow:${({$active})=>$active?'0 0 0 3px rgba(32,180,134,0.12)':'none'};&:hover{border-color:#20b486;}`;
+const RoleCard      = styled.div`background:white;border:1.5px solid ${({$active, theme})=>$active?theme.colors.primary:'#e2e8f0'};border-radius:14px;padding:1.25rem;cursor:pointer;transition:border-color 0.18s,box-shadow 0.18s;box-shadow:${({$active, theme})=>$active?`0 0 0 3px ${theme.colors.primary}1f`:'none'};&:hover{border-color:${({ theme }) => theme.colors.primary};}`;
 const RoleCardHeader = styled.div`display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;`;
 const RoleNameRow   = styled.div`display:flex;align-items:center;gap:10px;`;
 const RoleIcon      = styled.div`width:36px;height:36px;border-radius:10px;background:${({$color})=>$color||'#0e1b2a'};color:white;display:flex;align-items:center;justify-content:center;font-size:16px;`;
@@ -32,7 +32,7 @@ const Th            = styled.th`text-align:left;padding:12px 16px;font-size:11px
 const Td            = styled.td`padding:14px 16px;font-size:14px;color:#2d3748;border-bottom:1px solid #f0f4f8;vertical-align:middle;`;
 const Tr            = styled.tr`transition:background 0.12s;&:hover td{background:#f7f9fb;}&:last-child td{border-bottom:none;}`;
 const CenterCell    = styled.td`text-align:center;padding:3rem 1rem;color:#a0aab4;font-size:14px;`;
-const Spinner       = styled.div`width:22px;height:22px;border:2.5px solid #e2e8f0;border-top-color:#20b486;border-radius:50%;animation:${spin} 0.7s linear infinite;margin:0 auto;`;
+const Spinner       = styled.div`width:22px;height:22px;border:2.5px solid #e2e8f0;border-top-color:${({ theme }) => theme.colors.primary};border-radius:50%;animation:${spin} 0.7s linear infinite;margin:0 auto;`;
 const AvatarRow     = styled.div`display:flex;align-items:center;gap:10px;`;
 const Avatar        = styled.div`width:32px;height:32px;border-radius:50%;background:#0e1b2a;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;`;
 const AvatarName    = styled.div`font-weight:500;font-size:14px;color:#0e1b2a;`;
@@ -42,13 +42,15 @@ const Btn           = styled.button`display:inline-flex;align-items:center;gap:6
 const ActivateBtn   = styled(Btn)`background:#f0fff4;color:#276749;border:1px solid #c6f6d5;&:hover{background:#c6f6d5;}`;
 const DeactivateBtn = styled(Btn)`background:#fff5f5;color:#c53030;border:1px solid #fed7d7;&:hover{background:#fed7d7;}`;
 const AssignBtn     = styled(Btn)`background:#ebf4ff;color:#2b6cb0;border:1px solid #bee3f8;&:hover{background:#bee3f8;}`;
-const IconBtn       = styled.button`width:30px;height:30px;border:1.5px solid #e2e8f0;border-radius:8px;background:white;color:#718096;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;&:hover{border-color:#20b486;color:#20b486;}`;
+const IconBtn       = styled.button`width:30px;height:30px;border:1.5px solid #e2e8f0;border-radius:8px;background:white;color:#718096;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;&:hover{border-color:${({ theme }) => theme.colors.primary};color:${({ theme }) => theme.colors.primary};}`;
 const ErrorBanner   = styled.div`background:#fff5f5;border:1.5px solid #fed7d7;border-radius:10px;padding:12px 16px;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:#c53030;animation:${shake} 0.4s ease;`;
-const Overlay       = styled.div`position:fixed;inset:0;background:rgba(14,27,42,0.45);display:flex;align-items:center;justify-content:center;z-index:999;padding:1rem;`;
+const Overlay       = styled.div`position:fixed;inset:0;background:rgba(14,27,42,0.45);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:999;padding:1rem;`;
 const ModalCard     = styled.div`background:white;border-radius:16px;padding:2rem;width:100%;max-width:420px;animation:${fadeUp} 0.3s ease both;`;
-const ModalTitle    = styled.h2`font-size:18px;font-weight:600;color:#0e1b2a;margin:0 0 1.25rem;`;
+const LargeModalCard = styled.div`background:white;border-radius:16px;padding:2rem;width:100%;max-width:900px;max-height:85vh;overflow-y:auto;animation:${fadeUp} 0.3s ease both;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);`;
+const ModalHeader   = styled.div`display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;border-bottom:1px solid #edf2f7;padding-bottom:1rem;`;
+const ModalTitle    = styled.h2`font-size:18px;font-weight:600;color:#0e1b2a;margin:0;display:flex;align-items:center;gap:10px;`;
 const FieldLabel    = styled.label`display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#4a5568;margin-bottom:6px;`;
-const FieldSelect   = styled.select`width:100%;height:44px;border:1.5px solid #e2e8f0;border-radius:10px;padding:0 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:#0e1b2a;background:white;outline:none;cursor:pointer;&:focus{border-color:#20b486;}margin-bottom:1.25rem;`;
+const FieldSelect   = styled.select`width:100%;height:44px;border:1.5px solid #e2e8f0;border-radius:10px;padding:0 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:#0e1b2a;background:white;outline:none;cursor:pointer;&:focus{border-color:${({ theme }) => theme.colors.primary};}margin-bottom:1.25rem;`;
 const ModalFooter   = styled.div`display:flex;gap:10px;justify-content:flex-end;`;
 const CancelBtn     = styled(Btn)`background:#f7f9fb;color:#4a5568;border:1.5px solid #e2e8f0;height:40px;padding:0 16px;font-size:14px;&:hover{background:#edf2f7;}`;
 const PrimaryBtn    = styled(Btn)`background:#0e1b2a;color:white;height:40px;padding:0 18px;font-size:14px;&:hover{background:#1a2d43;}`;
@@ -77,14 +79,6 @@ export default function StaffManagement() {
   const [newRoleId,     setNewRoleId]     = useState('');
 
   useEffect(() => { fetchRoles(); fetchTenantRoles(); }, []); // eslint-disable-line
-
-  useEffect(() => {
-    if (roles.length && !activeRoleId) {
-      const first = roles[0];
-      setActiveRoleId(first.id);
-      fetchStaffByRole(first.id);
-    }
-  }, [roles]); // eslint-disable-line
 
   const handleRoleCardClick = (role) => {
     setActiveRoleId(role.id);
@@ -147,65 +141,73 @@ export default function StaffManagement() {
       )}
 
       {activeRole && (
-        <>
-          <SectionTitle>
-            <UserOutlined />Staff with role: {activeRole.role_name ?? activeRole.name}
-          </SectionTitle>
-          <TableWrap>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Staff Member</Th><Th>Department</Th><Th>Specialization</Th>
-                  <Th>Hire Date</Th><Th>Status</Th><Th>Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><CenterCell colSpan={6}><Spinner /></CenterCell></tr>
-                ) : activeRoleStaff.length === 0 ? (
-                  <tr><CenterCell colSpan={6}>No staff members assigned to this role.</CenterCell></tr>
-                ) : activeRoleStaff.map(s => {
-                  const name   = s.full_name??s.username??'—';
-                  const email  = s.email??'—';
-                  const dept   = s.department??'—';
-                  const spec   = s.specialization??'—';
-                  const hire   = s.hire_date??'—';
-                  const status = s.user_status??s.status??'inactive';
-                  return (
-                    <Tr key={s.id}>
-                      <Td>
-                        <AvatarRow>
-                          <Avatar>{getInitials(name)}</Avatar>
-                          <div><AvatarName>{name}</AvatarName><AvatarSub>{email}</AvatarSub></div>
-                        </AvatarRow>
-                      </Td>
-                      <Td>{dept}</Td><Td>{spec}</Td><Td>{hire}</Td>
-                      <Td>
-                        <Badge $v={status}>
-                          {status==='active'?<CheckCircleOutlined />:<StopOutlined />} {status}
-                        </Badge>
-                      </Td>
-                      <Td>
-                        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                          {canEdit && (
-                            <AssignBtn disabled={submitting} onClick={()=>openAssign(s)}>
-                              <SwapOutlined /> Change Role
-                            </AssignBtn>
-                          )}
-                          {canToggleActive && (
-                            status==='active'
-                              ? <DeactivateBtn disabled={submitting} onClick={()=>deactivateStaff(s.id)}><StopOutlined />Deactivate</DeactivateBtn>
-                              : <ActivateBtn   disabled={submitting} onClick={()=>activateStaff(s.id)}><CheckCircleOutlined />Activate</ActivateBtn>
-                          )}
-                        </div>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          </TableWrap>
-        </>
+        <Overlay onClick={() => setActiveRoleId(null)}>
+          <LargeModalCard onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>
+                <RoleIcon $color={getRoleColor(activeRole.role_name ?? activeRole.name)} style={{ width: 28, height: 28, fontSize: 14, borderRadius: 6 }}>
+                  <TeamOutlined />
+                </RoleIcon>
+                Staff List: {activeRole.role_name ?? activeRole.name}
+              </ModalTitle>
+              <IconBtn onClick={() => setActiveRoleId(null)}><CloseOutlined /></IconBtn>
+            </ModalHeader>
+            <TableWrap>
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Staff Member</Th><Th>Department</Th><Th>Specialization</Th>
+                    <Th>Hire Date</Th><Th>Status</Th><Th>Actions</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><CenterCell colSpan={6}><Spinner /></CenterCell></tr>
+                  ) : activeRoleStaff.length === 0 ? (
+                    <tr><CenterCell colSpan={6}>No staff members assigned to this role.</CenterCell></tr>
+                  ) : activeRoleStaff.map(s => {
+                    const name   = s.full_name??s.username??'—';
+                    const email  = s.email??'—';
+                    const dept   = s.department??'—';
+                    const spec   = s.specialization??'—';
+                    const hire   = s.hire_date??'—';
+                    const status = s.user_status??s.status??'inactive';
+                    return (
+                      <Tr key={s.id}>
+                        <Td>
+                          <AvatarRow>
+                            <Avatar>{getInitials(name)}</Avatar>
+                            <div><AvatarName>{name}</AvatarName><AvatarSub>{email}</AvatarSub></div>
+                          </AvatarRow>
+                        </Td>
+                        <Td>{dept}</Td><Td>{spec}</Td><Td>{hire}</Td>
+                        <Td>
+                          <Badge $v={status}>
+                            {status==='active'?<CheckCircleOutlined />:<StopOutlined />} {status}
+                          </Badge>
+                        </Td>
+                        <Td>
+                          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                            {canEdit && (
+                              <AssignBtn disabled={submitting} onClick={()=>openAssign(s)}>
+                                <SwapOutlined /> Change Role
+                              </AssignBtn>
+                            )}
+                            {canToggleActive && (
+                              status==='active'
+                                ? <DeactivateBtn disabled={submitting} onClick={()=>deactivateStaff(s.id)}><StopOutlined />Deactivate</DeactivateBtn>
+                                : <ActivateBtn   disabled={submitting} onClick={()=>activateStaff(s.id)}><CheckCircleOutlined />Activate</ActivateBtn>
+                            )}
+                          </div>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </TableWrap>
+          </LargeModalCard>
+        </Overlay>
       )}
 
       {assignModal && assignTarget && (

@@ -9,9 +9,9 @@ const Bar = styled.footer`
   padding: 14px 24px;
   font-family: 'DM Sans', sans-serif;
   font-size: 12px;
-  color: #a0aab4;
-  border-top: 1px solid #edf2f7;
-  background: #fff;
+  color: ${({ theme }) => theme.colors.textSecondary || '#a0aab4'};
+  border-top: 1px solid ${({ theme }) => theme.colors.border || '#edf2f7'};
+  background: ${({ theme }) => theme.colors.surface || '#fff'};
   margin-top: auto;
 `;
 
