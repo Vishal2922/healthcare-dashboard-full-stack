@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import {
   Drawer, Button, Space, Tag, Typography, Descriptions,
   Table, Divider, Alert, Skeleton, Popconfirm, Row, Col, Badge,
@@ -97,6 +97,7 @@ export default function InvoiceDetailDrawer({
   formLoading   = false,
   isOnline      = true,
 }) {
+  const theme         = useTheme();
   const invoice       = useSelector(selectSelectedInvoice);
   const detailLoading = useSelector(selectBillingDetailLoading);
 
@@ -109,7 +110,7 @@ export default function InvoiceDetailDrawer({
 
   const handleDownload = () => {
     if (!invoice) return;
-    downloadInvoicePDF(invoice);
+    downloadInvoicePDF(invoice, { themeColor: theme.colors.primary });
   };
 
   const isPaid      = invoice?.status === 'paid';

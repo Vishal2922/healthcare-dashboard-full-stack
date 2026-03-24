@@ -136,7 +136,7 @@ const BrandIcon = styled.div`
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  background: #20b486;
+  background: ${({ theme }) => theme.colors.primary};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,7 +181,7 @@ const StatNum = styled.div`
   font-family: 'Fraunces', serif;
   font-weight: 500;
   font-size: 26px;
-  color: #20b486;
+  color: ${({ theme }) => theme.colors.primary};
   line-height: 1;
   margin-bottom: 4px;
 `;
@@ -206,7 +206,7 @@ const TrustDot = styled.span`
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #20b486;
+  background: ${({ theme }) => theme.colors.primary};
   display: inline-block;
   animation: ${pulse} 2.5s ease-in-out infinite;
 `;
@@ -234,7 +234,7 @@ const WelcomeLabel = styled.p`
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #20b486;
+  color: ${({ theme }) => theme.colors.primary};
   margin: 0 0 10px;
 `;
 
@@ -292,7 +292,7 @@ const ForgotBtn = styled.button`
   font-family: 'DM Sans', sans-serif;
   font-size: 12px;
   font-weight: 500;
-  color: #20b486;
+  color: ${({ theme }) => theme.colors.primary};
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -328,8 +328,8 @@ const Input = styled.input`
   }
 
   &:focus {
-    border-color: #20b486;
-    box-shadow: 0 0 0 3px rgba(32, 180, 134, 0.12);
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: ${({ theme }) => `0 0 0 3px ${theme.colors.primary}1f`};
   }
 
   &:disabled {

@@ -32,6 +32,7 @@ const InvoicePage         = lazy(() => import('../pages/Billing/InvoicePage'));
 const StaffManagement     = lazy(() => import('../pages/Staff/StaffManagement'));
 const UserManagement      = lazy(() => import('../pages/Settings/UserManagement'));
 const SecuritySettings    = lazy(() => import('../pages/Settings/SecuritySettings'));
+const ThemeSettings       = lazy(() => import('../pages/Settings/ThemeSettings'));
 const ForgotPassword      = lazy(() => import('../pages/Auth/ForgotPassword'));
 const PrescriptionList    = lazy(() => import('../pages/Prescriptions/PrescriptionList'));
 
@@ -133,8 +134,41 @@ export default function AppRouter() {
           <Route path="/"  element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
           <Route path="*"  element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
 
-        </Routes>
-      </Suspense>
-    </>
+          {/* Module 12: Calendar — Receptionist, Admin */}
+          <Route element={<RoleBasedRoute roles={['Receptionist', 'Admin']} />}>
+            <Route path="/appointments/calendar" element={<AppointmentCalendar />} />
+          </Route>
+
+          {/* Module 5: Prescriptions — Provider, Pharmacist, Admin */}
+          <Route element={<RoleBasedRoute roles={['Admin', 'Provider', 'Pharmacist']} />}>
+            <Route path="/prescriptions" element={<PrescriptionList />} />
+          </Route>
+
+          {/* Module 11: Billing — Admin */}
+          <Route element={<RoleBasedRoute roles={['Admin']} />}>
+            <Route path="/billing" element={<InvoicePage />} />
+          </Route>
+
+          {/* Module 6: Staff — Admin only */}
+          <Route element={<RoleBasedRoute roles={['Admin']} />}>
+            <Route path="/settings/staff" element={<StaffManagement />} />
+          </Route>
+
+          {/* Settings — Admin only */}
+          <Route element={<RoleBasedRoute roles={['Admin']} />}>
+            <Route path="/settings/users" element={<UserManagement />} />
+          </Route>
+
+          <Route element={<RoleBasedRoute roles={['Admin']} />}>
+            <Route path="/settings/theme" element={<ThemeSettings />} />
+          </Route>
+
+        </Route>
+
+        <Route path="/"  element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
+        <Route path="*"  element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} replace />} />
+
+      </Routes>
+    </Suspense>
   );
 }

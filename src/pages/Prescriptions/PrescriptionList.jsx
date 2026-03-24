@@ -7,7 +7,7 @@
  *   Admin       → read-only table, no action buttons
  */
 import React, { useEffect, useState, useCallback } from 'react';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import {
   Table, Button, Input, Select, Tag, Space, Tooltip,
   Alert, Typography, Row, Col, Card, Popconfirm, Statistic,
@@ -50,7 +50,7 @@ const HeaderLeft = styled.div`
 
 const PageIcon = styled.div`
   width: 48px; height: 48px; border-radius: 12px;
-  background: #20b486;
+  background: ${({ theme }) => theme.colors.primary};
   display: flex; align-items: center; justify-content: center;
   font-size: 22px; color: #fff; flex-shrink: 0;
 `;
@@ -83,7 +83,7 @@ const StatIconWrap = styled.div`
   width: 28px; height: 28px; border-radius: 7px;
   background: ${({ $bg }) => $bg || '#f0fdf9'};
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; color: ${({ $color }) => $color || '#20b486'};
+  font-size: 13px; color: ${({ $color, theme }) => $color || theme.colors.primary};
 `;
 
 const StatValue = styled.div`
@@ -130,6 +130,7 @@ function StatusBadge({ status }) {
 // ─── Page Component ───────────────────────────────────────────────────────────
 export default function PrescriptionList() {
   const dispatch = useDispatch();
+  const theme = useTheme();
 
   const {
     hasAccess, list, listLoading, formLoading,
@@ -213,8 +214,9 @@ export default function PrescriptionList() {
   const handleDownload = useCallback((record) => {
     downloadPrescriptionPDF(record, {
       doctorName: record.provider_name || user?.username || 'Attending Physician',
+      themeColor: theme.colors.primary,
     });
-  }, [user]);
+  }, [user, theme]);
 
   // ── Table columns ──────────────────────────────────────────────────────────
   const columns = [
@@ -298,7 +300,7 @@ export default function PrescriptionList() {
               okText="Dispense"
               cancelText="Cancel"
               okButtonProps={{
-                style: { borderRadius: 6, background: '#20b486', borderColor: '#20b486' },
+                style: { borderRadius: 6, background: theme.colors.primary, borderColor: theme.colors.primary },
               }}
             >
               <Button
@@ -306,7 +308,7 @@ export default function PrescriptionList() {
                 type="primary"
                 icon={<CheckCircleOutlined />}
                 loading={formLoading}
-                style={{ borderRadius: 6, background: '#20b486', borderColor: '#20b486' }}
+                style={{ borderRadius: 6, background: theme.colors.primary, borderColor: theme.colors.primary }}
               >
                 Dispense
               </Button>
@@ -385,7 +387,7 @@ export default function PrescriptionList() {
               onClick={handleOpenCreate}
               style={{
                 borderRadius: 8, fontWeight: 600,
-                background: '#20b486', borderColor: '#20b486',
+                background: theme.colors.primary, borderColor: theme.colors.primary,
               }}
             >
               New Prescription
@@ -417,8 +419,8 @@ export default function PrescriptionList() {
             label: 'Dispensed',
             value: dispensed,
             note: `${dispenseRate}% completion`,
-            color: '#20b486',
-            iconBg: '#f0fdf9', iconColor: '#20b486',
+            color: theme.colors.primary,
+            iconBg: `${theme.colors.primary}15`, iconColor: theme.colors.primary,
             Icon: CheckCircleOutlined,
           },
           {

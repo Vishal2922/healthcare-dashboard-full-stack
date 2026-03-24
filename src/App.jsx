@@ -3,15 +3,18 @@ import { BrowserRouter } from 'react-router-dom';
 import store from './app/store';
 import AppRouter from './routes/AppRouter';
 import { setStore } from './services/storeInjector';
+import { AppThemeProvider } from './context/ThemeContext';
 
 setStore(store);
 
 export default function App() {
   return (
     <Provider store={store}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AppRouter />
-      </BrowserRouter>
+      <AppThemeProvider>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AppRouter />
+        </BrowserRouter>
+      </AppThemeProvider>
     </Provider>
   );
 }

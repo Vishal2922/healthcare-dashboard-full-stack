@@ -21,6 +21,7 @@ export function downloadInvoicePDF(invoice, clinicInfo = {}) {
     phone:   clinicInfo.phone   || '+91 98765 43210',
     email:   clinicInfo.email   || 'contact@clinicos.health',
     gstin:   clinicInfo.gstin   || '',
+    themeColor: clinicInfo.themeColor || '#20b486',
   };
 
   const invoiceNumber = invoice.invoice_number
@@ -164,7 +165,7 @@ export function downloadInvoicePDF(invoice, clinicInfo = {}) {
     }
     .logo-icon {
       width: 46px; height: 46px;
-      background: #20b486;
+      background: ${clinic.themeColor};
       border-radius: 11px;
       display: flex; align-items: center; justify-content: center;
       color: #fff; font-size: 24px; font-weight: 800;

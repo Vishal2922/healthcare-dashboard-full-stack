@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import {
   Table, Button, Input, Select, Tag, Space, Tooltip,
   Popconfirm, Alert, Typography, Row, Col, Card,
@@ -249,6 +249,7 @@ function buildColumns({ onView, onStatusChange, onDelete, onDownload, canWrite, 
 // ─── Page Component ───────────────────────────────────────────────────────────
 export default function InvoicePage() {
   const dispatch = useDispatch();
+  const theme    = useTheme();
   const billing  = useBilling();
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
@@ -315,7 +316,7 @@ export default function InvoicePage() {
 
   // Direct download from row — no need to open drawer
   const handleDownload = (record) => {
-    downloadInvoicePDF(record);
+    downloadInvoicePDF(record, { themeColor: theme.colors.primary });
   };
 
   const handleStatusFilter = (val) => {

@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
-import styled, { keyframes, createGlobalStyle } from 'styled-components';
+import styled, { keyframes, createGlobalStyle, useTheme } from 'styled-components';
 import useAuth from '../../modules/auth/hooks/useAuth';
 import axiosClient from '../../services/axiosClient';
-
-/* ── Google Font ─────────────────────────────────────────────────────────────── */
-const DashFont = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap');
-`;
 
 /* ── Animations ──────────────────────────────────────────────────────────────── */
 const rise = keyframes`
@@ -94,7 +89,7 @@ const GreetLabel = styled.div`
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: ${T.accent};
+  color: ${({ theme }) => theme.colors.primary};
   margin-bottom: 6px;
 `;
 
@@ -137,7 +132,7 @@ const OnlineDot = styled.div`
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: ${T.accent};
+  color: ${({ theme }) => theme.colors.primary};
   font-weight: 500;
 
   &::before {
@@ -145,8 +140,8 @@ const OnlineDot = styled.div`
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: ${T.accent};
-    box-shadow: 0 0 0 3px rgba(32,180,134,0.2);
+    background: ${({ theme }) => theme.colors.primary};
+    box-shadow: ${({ theme }) => `0 0 0 3px ${theme.colors.primary}33`};
     animation: ${pulse} 2s ease-in-out infinite;
   }
 `;
@@ -216,7 +211,7 @@ const KpiCard = styled.div`
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 
   &:hover {
-    border-color: ${({ $accent }) => $accent || T.accent}40;
+    border-color: ${({ $accent, theme }) => ($accent || theme.colors.primary)}40;
     box-shadow: 0 4px 24px rgba(0,0,0,0.07);
     transform: translateY(-2px);
   }
@@ -226,7 +221,7 @@ const KpiCard = styled.div`
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: ${({ $accent }) => $accent || T.accent};
+    background: ${({ $accent, theme }) => $accent || theme.colors.primary};
     opacity: 0;
     transition: opacity 0.2s;
   }
@@ -296,8 +291,8 @@ const KpiTrend = styled.span`
   gap: 2px;
   font-size: 10px;
   font-weight: 600;
-  color: ${({ $up }) => $up ? T.accent : T.rose};
-  background: ${({ $up }) => $up ? T.accentL : T.roseL};
+  color: ${({ $up, theme }) => $up ? theme.colors.primary : T.rose};
+  background: ${({ $up, theme }) => $up ? `${theme.colors.primary}1f` : T.roseL};
   border-radius: 4px;
   padding: 1px 5px;
 `;
@@ -363,7 +358,7 @@ const HeroKpiBadge = styled.div`
   padding: 5px 11px;
   font-size: 11px;
   font-weight: 600;
-  color: ${T.accent};
+  color: ${({ theme }) => theme.colors.primary};
   display: flex;
   align-items: center;
   gap: 4px;
@@ -373,7 +368,7 @@ const HeroKpiBadge = styled.div`
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background: ${T.accent};
+    background: ${({ theme }) => theme.colors.primary};
     animation: ${pulse} 2s ease-in-out infinite;
   }
 `;
@@ -590,6 +585,7 @@ function SkeletonKpis({ count = 4 }) {
 export default function DashboardPage() {
   const { user }                  = useAuth();
   const role                      = user?.role;
+  const sysTheme                  = useTheme();
   const [stats,   setStats]       = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error,   setError]       = useState(false);
@@ -638,7 +634,7 @@ export default function DashboardPage() {
       label: 'Active Staff',
       value: n(stats?.active_staff),
       note:  'All roles',
-      accent: T.accent, bg: T.accentL, icon: '👥',
+      accent: sysTheme.colors.primary, bg: `${sysTheme.colors.primary}15`, icon: '👥',
     });
   }
   if (hasPrescriptions && !hasBilling) {
@@ -653,13 +649,12 @@ export default function DashboardPage() {
       label: 'Dispensed',
       value: n(stats?.dispensed_prescriptions),
       note:  'Successfully issued',
-      accent: T.accent, bg: T.accentL, icon: '✅',
+      accent: sysTheme.colors.primary, bg: `${sysTheme.colors.primary}15`, icon: '✅',
     });
   }
 
   return (
     <>
-      <DashFont />
       <Page>
 
         {/* ── Hero ─────────────────────────────────────────────────────── */}
