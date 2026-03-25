@@ -25,6 +25,8 @@ const Bar = styled.header`
   padding: 0 24px;
   z-index: 200;
   box-shadow: 0 1px 0 rgba(255,255,255,0.06);
+  transform: translateY(${({ $hidden }) => ($hidden ? '-100%' : '0')});
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 `;
 
 const Brand = styled(Link)`
@@ -136,7 +138,7 @@ const LogoutBtn = styled.button`
   &:hover { color: #fc8181; background: rgba(252,129,129,0.1); }
 `;
 
-export default function Header({ onMenuToggle }) {
+export default function Header({ onMenuToggle, hidden }) {
   const { user, logout } = useAuth();
   const {
     notifications,
@@ -156,7 +158,7 @@ export default function Header({ onMenuToggle }) {
   const closeDropdown  = useCallback(() => setDropdownOpen(false), []);
 
   return (
-    <Bar>
+    <Bar $hidden={hidden}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <MenuBtn onClick={onMenuToggle} title="Toggle sidebar">
           <MenuOutlined />

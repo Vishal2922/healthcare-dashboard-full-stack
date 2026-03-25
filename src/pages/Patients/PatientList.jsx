@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import styled from 'styled-components';
 import {
   Table, Button, Input, Select, Tag, Avatar, Space, Tooltip,
@@ -14,10 +14,20 @@ import {
 } from '@ant-design/icons';
 
 import usePatients from '../../modules/patients/hooks/usePatients';
-import { fetchPatientsRequest } from '../../modules/patients/patientSlice';
+import {
+  fetchPatientsRequest,
+  serveFromCache,
+  selectPatientMeta,
+  selectPatientPageCache,
+  selectPatientFilters,
+  selectPatientPrefetching,
+} from '../../modules/patients/patientSlice';
+import usePrefetchPagination from '../../hooks/usePrefetchPagination';
+import useOfflineQueue from '../../hooks/useOfflineQueue';
 import useDebounce from '../../hooks/useDebounce';
 import usePermission from '../../hooks/usePermission';
 import PatientFormDrawer from '../../components/forms/PatientFormDrawer';
+import PaginationBar from '../../components/PaginationBar';
 
 const { Title, Text } = Typography;
 const { Search }      = Input;
@@ -223,8 +233,16 @@ export default function PatientList() {
 
   const canCreate = can('patients', 'create');
   const canEdit   = can('patients', 'edit');
-  // FIX: only declared here — was also destructured from pts below causing the build error
   const canDelete = can('patients', 'delete');
+
+  // ── Prefetch pagination ────────────────────────────────────────────────────
+  const prefetching = useSelector(selectPatientPrefetching);
+
+  // ── Offline queue (module-specific pending count) ──────────────────────────
+  const { queueByModule } = useOfflineQueue();
+  const offlinePendingCount = (queueByModule.patients ?? []).filter(
+    (q) => q.status === 'pending'
+  ).length;
 
   const [drawerOpen,  setDrawerOpen]  = useState(false);
   const [editTarget,  setEditTarget]  = useState(null);
@@ -234,6 +252,25 @@ export default function PatientList() {
   const applyFilters  = pts.accessDenied ? null : pts.applyFilters;
   const fetchPatients = pts.accessDenied ? null : pts.fetchPatients;
   const clearFilters  = pts.accessDenied ? null : pts.clearFilters;
+
+  // FIX: must destructure listLoading before calling usePrefetchPagination
+  const {
+    patientList, meta, filters, listLoading, formLoading,
+    error, successMessage, isOnline, pendingCount, isFlushing,
+    createPatient, updatePatient, deletePatient,
+    dismissError, dismissSuccess,
+  } = pts.accessDenied ? {} : pts;
+
+  const pagination = usePrefetchPagination({
+    fetchAction:          fetchPatientsRequest,
+    metaSelector:         selectPatientMeta,
+    pageCacheSelector:    selectPatientPageCache,
+    serveFromCacheAction: serveFromCache,
+    listLoading:          listLoading ?? false,
+    debounceMs:           200,
+    cacheKeyPrefix:       'patients',
+    filtersSelector:      selectPatientFilters,
+  });
 
   useEffect(() => {
     if (!applyFilters) return;
@@ -251,14 +288,6 @@ export default function PatientList() {
     );
   }
 
-  // FIX: canDelete removed from here — already declared above
-  const {
-    patientList, meta, filters, listLoading, formLoading,
-    error, successMessage, isOnline, pendingCount, isFlushing,
-    createPatient, updatePatient, deletePatient,
-    dismissError, dismissSuccess,
-  } = pts;
-
   const handleOpenCreate = () => { setEditTarget(null);    setDrawerOpen(true);  };
   const handleOpenEdit   = (r)  => { setEditTarget(r);     setDrawerOpen(true);  };
   const handleClose      = ()   => { setDrawerOpen(false); setEditTarget(null);  };
@@ -268,10 +297,6 @@ export default function PatientList() {
       ? updatePatient({ id: editTarget.id, ...values })
       : createPatient(values);
     handleClose();
-  };
-
-  const handleTableChange = (pag) => {
-    fetchPatients({ page: pag.current, per_page: pag.pageSize });
   };
 
   const handleGenderFilter = (val) => {
@@ -295,8 +320,8 @@ export default function PatientList() {
     canEdit, canDelete, formLoading,
   });
 
-  const maleCount   = patientList.filter((p) => p.gender === 'Male').length;
-  const femaleCount = patientList.filter((p) => p.gender === 'Female').length;
+  const maleCount   = (patientList ?? []).filter((p) => p.gender === 'Male').length;
+  const femaleCount = (patientList ?? []).filter((p) => p.gender === 'Female').length;
 
   return (
     <PageWrapper>
@@ -311,6 +336,23 @@ export default function PatientList() {
         <Alert type="info" showIcon icon={<ClockCircleOutlined />}
           message={`Syncing ${pendingCount} queued action${pendingCount > 1 ? 's' : ''}…`}
           style={{ borderRadius: 8, marginBottom: 16 }} />
+      )}
+
+      {/* Offline queue badge — shows module-specific pending count */}
+      {offlinePendingCount > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '6px 12px', marginBottom: 16,
+          background: '#fef3c7', border: '1px solid #fcd34d',
+          borderRadius: '8px', fontSize: '0.8125rem',
+          color: '#92400e', fontWeight: 500,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          {offlinePendingCount} pending change{offlinePendingCount > 1 ? 's' : ''} — will sync when online
+        </div>
       )}
       {error && (
         <Alert type="error" showIcon message={error} closable onClose={dismissError}
@@ -331,7 +373,7 @@ export default function PatientList() {
                 {isOnline
                   ? <><WifiOutlined style={{ color: '#52c41a' }} /> Online</>
                   : <><DisconnectOutlined style={{ color: '#faad14' }} /> Offline</>}
-                — {meta.total} patients
+                — {meta?.total ?? 0} patients
               </Space>
             </Text>
           </div>
@@ -339,8 +381,8 @@ export default function PatientList() {
         <Space>
           <Tooltip title="Refresh">
             <Button icon={<ReloadOutlined />}
-              onClick={() => fetchPatients({ page: meta.page })}
-              loading={listLoading} />
+              onClick={() => fetchPatients?.({ page: meta?.page ?? 1 })}
+              loading={listLoading ?? false} />
           </Tooltip>
           {canCreate && (
             <Button
@@ -357,10 +399,10 @@ export default function PatientList() {
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         {[
-          { label: 'Total Patients', value: meta.total,   color: '#4f46e5' },
-          { label: 'Male',           value: maleCount,    color: '#1890ff' },
-          { label: 'Female',         value: femaleCount,  color: '#eb2f96' },
-          { label: 'Pending Sync',   value: pendingCount, color: pendingCount > 0 ? '#faad14' : '#bfbfbf' },
+          { label: 'Total Patients', value: meta?.total ?? 0,       color: '#4f46e5' },
+          { label: 'Male',           value: maleCount,              color: '#1890ff' },
+          { label: 'Female',         value: femaleCount,            color: '#eb2f96' },
+          { label: 'Pending Sync',   value: offlinePendingCount,    color: offlinePendingCount > 0 ? '#faad14' : '#bfbfbf' },
         ].map((s) => (
           <Col xs={12} sm={6} key={s.label}>
             <StatsCard>
@@ -398,18 +440,21 @@ export default function PatientList() {
           dataSource={patientList}
           rowKey="id"
           loading={listLoading}
-          pagination={{
-            current: meta.page, pageSize: meta.per_page, total: meta.total,
-            showSizeChanger: true, showTotal: (t) => `${t} patients`,
-            style: { padding: '16px 20px' },
-          }}
-          onChange={handleTableChange}
+          pagination={false}
           scroll={{ x: 900 }}
           onRow={(record) => ({
             onDoubleClick: () => navigate(`/patients/${record.id}`),
           })}
           style={{ borderRadius: '0 0 12px 12px' }}
         />
+
+        {/* Prefetch pagination bar */}
+        <div style={{ padding: '8px 16px', borderTop: '1px solid #f9fafb' }}>
+          <PaginationBar
+            {...pagination}
+            isPrefetching={prefetching}
+          />
+        </div>
       </TableCard>
 
       {(canCreate || canEdit) && (

@@ -16,8 +16,17 @@ import axiosClient from '../../services/axiosClient';
 
 // ─── List (paginated + filterable) ──────────────────────────────────────────
 export const fetchPatientListAPI = async (params = {}) => {
-  // params: { page, per_page, search, gender, status }
-  const response = await axiosClient.get('/api/patients', { params });
+  // Convert page/per_page to limit/skip for the backend
+  const page    = params.page     || 1;
+  const perPage = params.per_page || 10;
+  const skip    = (page - 1) * perPage;
+  const limit   = perPage;
+
+  // Build API params: limit + skip + filters (strip page/per_page/_prefetch)
+  const { page: _p, per_page: _pp, _prefetch, forceRefresh, ...filters } = params;
+  const apiParams = { limit, skip, ...filters };
+
+  const response = await axiosClient.get('/api/patients', { params: apiParams });
   return response.data;
   // shape: { status, data: { data: [...patients], meta: { total, page, per_page, last_page } } }
 };
