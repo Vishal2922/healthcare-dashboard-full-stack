@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import useAppointments from '../../modules/appointments/hooks/useAppointments';
+import { useTheme } from 'styled-components';
 
 export default function AppointmentForm({ onClose, doctors = [], patients = [] }) {
   const {
@@ -11,6 +12,13 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
   const [form, setForm] = React.useState({
     patient_id: '', doctor_id: '', appointment_time: '', reason: '',
   });
+
+  const theme = useTheme();
+  const textColor = theme?.colors?.text || '#1a202c';
+  const textSecondary = theme?.colors?.textSecondary || '#4a5568';
+  const surfaceBg = theme?.colors?.surface || '#fff';
+  const inputBg = theme?.colors?.background || '#fff';
+  const borderColor = theme?.colors?.border || '#e2e8f0';
 
   useEffect(() => {
     if (bookingSuccess) {
@@ -56,10 +64,10 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
 
   return (
     <div style={S.overlay}>
-      <div style={S.card}>
+      <div style={{ ...S.card, background: surfaceBg }}>
         <div style={S.header}>
-          <h2 style={S.title}>Book Appointment</h2>
-          <button style={S.closeBtn} onClick={handleClose} type="button">✕</button>
+          <h2 style={{ ...S.title, color: textColor }}>Book Appointment</h2>
+          <button style={{ ...S.closeBtn, color: theme?.colors?.textSecondary || '#718096' }} onClick={handleClose} type="button">✕</button>
         </div>
 
         {!isOnline && (
@@ -74,24 +82,24 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
 
         <form onSubmit={handleSubmit}>
           <div style={S.field}>
-            <label style={S.label} htmlFor="patient_id">Patient *</label>
-            <select id="patient_id" name="patient_id" value={form.patient_id} onChange={handleChange} required style={S.input}>
+            <label style={{ ...S.label, color: textSecondary }} htmlFor="patient_id">Patient *</label>
+            <select id="patient_id" name="patient_id" value={form.patient_id} onChange={handleChange} required style={{ ...S.input, background: inputBg, color: textColor, borderColor }}>
               <option value="">— Select patient —</option>
               {patients.map((p) => <option key={p.id} value={p.id}>{p.patient_name || p.name || `#${p.id}`}</option>)}
             </select>
           </div>
 
           <div style={S.field}>
-            <label style={S.label} htmlFor="doctor_id">Doctor *</label>
-            <select id="doctor_id" name="doctor_id" value={form.doctor_id} onChange={handleChange} required style={S.input}>
+            <label style={{ ...S.label, color: textSecondary }} htmlFor="doctor_id">Doctor *</label>
+            <select id="doctor_id" name="doctor_id" value={form.doctor_id} onChange={handleChange} required style={{ ...S.input, background: inputBg, color: textColor, borderColor }}>
               <option value="">— Select doctor —</option>
               {doctors.map((d) => <option key={d.id} value={d.id}>{d.username || d.full_name || `#${d.id}`}</option>)}
             </select>
           </div>
 
           <div style={S.field}>
-            <label style={S.label} htmlFor="appointment_time">Date & Time *</label>
-            <input id="appointment_time" type="datetime-local" name="appointment_time" value={form.appointment_time} onChange={handleChange} min={minDateTime} required style={S.input} />
+            <label style={{ ...S.label, color: textSecondary }} htmlFor="appointment_time">Date & Time *</label>
+            <input id="appointment_time" type="datetime-local" name="appointment_time" value={form.appointment_time} onChange={handleChange} min={minDateTime} required style={{ ...S.input, background: inputBg, color: textColor, borderColor }} />
             <div style={{ minHeight: 20, marginTop: 4, fontSize: 12 }}>
               {conflictCheck.checking && <span style={{ color: '#805ad5' }}>⏳ Checking availability…</span>}
               {conflictCheck.isAvailable === true  && <span style={{ color: '#2f855a' }}>✅ Slot available</span>}
@@ -100,12 +108,12 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
           </div>
 
           <div style={S.field}>
-            <label style={S.label} htmlFor="reason">Reason (optional)</label>
-            <textarea id="reason" name="reason" value={form.reason} onChange={handleChange} rows={3} style={{ ...S.input, resize: 'vertical' }} placeholder="Brief reason for visit…" />
+            <label style={{ ...S.label, color: textSecondary }} htmlFor="reason">Reason (optional)</label>
+            <textarea id="reason" name="reason" value={form.reason} onChange={handleChange} rows={3} style={{ ...S.input, resize: 'vertical', background: inputBg, color: textColor, borderColor }} placeholder="Brief reason for visit…" />
           </div>
 
           <div style={S.actions}>
-            <button type="button" onClick={handleClose} style={S.cancelBtn} disabled={bookingLoading}>Cancel</button>
+            <button type="button" onClick={handleClose} style={{ ...S.cancelBtn, background: theme?.colors?.background || '#f7fafc', color: textSecondary, borderColor }} disabled={bookingLoading}>Cancel</button>
             <button
               type="submit"
               style={{ ...S.submitBtn, opacity: isSubmitDisabled ? 0.6 : 1, cursor: isSubmitDisabled ? 'not-allowed' : 'pointer' }}

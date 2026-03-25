@@ -4,6 +4,7 @@ import usePatients from '../../modules/patients/hooks/usePatients';
 import useUsers from '../../modules/users/hooks/useUsers';
 import AppointmentForm from '../../components/forms/AppointmentForm';
 import AppointmentNotesDrawer from '../../components/communication/AppointmentNotesDrawer';
+import { useTheme } from 'styled-components';
 import usePermission from '../../hooks/usePermission';
 
 export default function AppointmentList() {
@@ -23,6 +24,13 @@ export default function AppointmentList() {
   const canCreate       = can('appointments', 'create');
   const canCancel       = can('appointments', 'cancel');
   const canUpdateStatus = can('appointments', 'updateStatus');
+
+  const theme = useTheme();
+  const textColor = theme?.colors?.text || '#1a202c';
+  const textSecondary = theme?.colors?.textSecondary || '#2d3748';
+  const pageBg = theme?.colors?.background || '#f7f5f0';
+  const tableBg = theme?.colors?.surface || '#fff';
+  const borderColor = theme?.colors?.border || '#edf2f7';
 
   const [showBookModal, setShowBookModal] = useState(false);
   const [notesApptId, setNotesApptId]     = useState(null);
@@ -106,12 +114,12 @@ export default function AppointmentList() {
   };
 
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, background: pageBg }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={S.header}>
         <div>
-          <h1 style={S.title}>Appointments</h1>
+          <h1 style={{ ...S.title, color: textColor }}>Appointments</h1>
           <p style={S.subtitle}>Manage and track all clinic appointments</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -187,10 +195,10 @@ export default function AppointmentList() {
         ) : (
           <table style={S.table}>
             <thead>
-              <tr style={{ background: '#f7fafc' }}>
+              <tr style={{ background: theme?.colors?.sidebarBg || '#f7fafc' }}>
                 {/* FIX: added Appt ID and Patient ID columns */}
                 {['Appt ID', 'Patient ID', 'Patient', 'Doctor', 'Date & Time', 'Reason', 'Status', 'Actions'].map((h) => (
-                  <th key={h} style={S.th}>{h}</th>
+                  <th key={h} style={{ ...S.th, borderBottomColor: borderColor }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -200,38 +208,38 @@ export default function AppointmentList() {
                 const next    = NEXT_STATUSES[appt.status] || [];
                 const isFinal = ['completed', 'cancelled'].includes(appt.status);
                 return (
-                  <tr key={appt.id} style={{ borderBottom: '1px solid #edf2f7' }}>
+                  <tr key={appt.id} style={{ borderBottom: `1px solid ${borderColor}`, background: tableBg }}>
 
                     {/* FIX: Appointment ID — styled as a monospace badge */}
-                    <td style={S.td}>
-                      <span style={S.idBadge}>#{appt.id}</span>
+                    <td style={{ ...S.td, color: textSecondary }}>
+                      <span style={{ ...S.idBadge, background: theme?.colors?.sidebarBg || '#edf2f7' }}>#{appt.id}</span>
                     </td>
 
                     {/* FIX: Patient ID — styled as a monospace badge */}
-                    <td style={S.td}>
-                      <span style={S.idBadge}>#{appt.patient_id}</span>
+                    <td style={{ ...S.td, color: textSecondary }}>
+                      <span style={{ ...S.idBadge, background: theme?.colors?.sidebarBg || '#edf2f7' }}>#{appt.patient_id}</span>
                     </td>
 
                     {/* Patient name — falls back to Patient ID if name not resolved */}
-                    <td style={S.td}>
+                    <td style={{ ...S.td, color: textColor }}>
                       <strong>
-                        {appt.patient_name || <span style={{ color: '#a0aec0' }}>Unknown</span>}
+                        {appt.patient_name || <span style={{ color: theme?.colors?.textSecondary || '#a0aec0' }}>Unknown</span>}
                       </strong>
                     </td>
 
                     {/* Doctor name */}
-                    <td style={S.td}>
+                    <td style={{ ...S.td, color: textSecondary }}>
                       {appt.doctor_name || `#${appt.doctor_id}`}
                     </td>
 
                     {/* Date & Time */}
-                    <td style={S.td}>
+                    <td style={{ ...S.td, color: textSecondary }}>
                       <div>
                         {new Date(appt.appointment_time).toLocaleDateString(undefined, {
                           year: 'numeric', month: 'short', day: 'numeric',
                         })}
                       </div>
-                      <div style={{ fontSize: 12, color: '#718096' }}>
+                      <div style={{ fontSize: 12, color: theme?.colors?.textSecondary || '#718096' }}>
                         {new Date(appt.appointment_time).toLocaleTimeString(undefined, {
                           hour: '2-digit', minute: '2-digit',
                         })}
@@ -239,17 +247,17 @@ export default function AppointmentList() {
                     </td>
 
                     {/* Reason */}
-                    <td style={{ ...S.td, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {appt.reason || <span style={{ color: '#a0aec0' }}>—</span>}
+                    <td style={{ ...S.td, color: textSecondary, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {appt.reason || <span style={{ color: theme?.colors?.textSecondary || '#a0aec0' }}>—</span>}
                     </td>
 
                     {/* Status */}
-                    <td style={S.td}>
+                    <td style={{ ...S.td }}>
                       <StatusBadge status={appt.status} />
                     </td>
 
                     {/* Actions */}
-                    <td style={S.td}>
+                    <td style={{ ...S.td }}>
                       {busy ? (
                         <span style={{ fontSize: 11, color: '#a0aec0' }}>Updating…</span>
                       ) : (

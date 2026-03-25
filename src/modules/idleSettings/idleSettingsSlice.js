@@ -15,7 +15,7 @@ import { createSlice } from '@reduxjs/toolkit';
  */
 
 const STORAGE_KEY      = 'idle_timeout_minutes';
-const DEFAULT_TIMEOUT  = 5; // 5 minutes default
+const DEFAULT_TIMEOUT  = 55; // 5 minutes default
 
 function loadFromStorage() {
   try {

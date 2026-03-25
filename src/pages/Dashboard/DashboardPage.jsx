@@ -48,14 +48,14 @@ const T = {
 /* ── Layout ──────────────────────────────────────────────────────────────────── */
 const Page = styled.div`
   font-family: 'DM Sans', sans-serif;
-  background: ${T.bg};
+  background: ${({ theme }) => theme?.colors?.background || '#f5f7fa'};
   min-height: 100vh;
   padding: 0;
 `;
 
 /* ── Hero bar ── */
 const Hero = styled.div`
-  background: ${T.navy};
+  background: ${({ theme }) => theme?.colors?.headerBg || '#0f1923'};
   background-image:
     radial-gradient(ellipse at 10% 50%, rgba(32,180,134,0.12) 0%, transparent 60%),
     radial-gradient(ellipse at 90% 20%, rgba(99,102,241,0.08) 0%, transparent 50%);
@@ -173,7 +173,7 @@ const SectionTitle = styled.h2`
   font-family: 'Sora', sans-serif;
   font-size: 13px;
   font-weight: 600;
-  color: ${T.navy};
+  color: ${({ theme }) => theme?.colors?.text || '#0a1628'};
   margin: 0;
   letter-spacing: 0.01em;
 `;
@@ -181,8 +181,8 @@ const SectionTitle = styled.h2`
 const SectionCount = styled.span`
   font-family: 'DM Mono', monospace;
   font-size: 10px;
-  color: ${T.muted};
-  background: ${T.border};
+  color: ${({ theme }) => theme?.colors?.textSecondary || '#8896a8'};
+  background: ${({ theme }) => theme?.colors?.border || '#e8edf3'};
   border-radius: 4px;
   padding: 1px 6px;
 `;
@@ -190,7 +190,7 @@ const SectionCount = styled.span`
 const SectionRule = styled.div`
   flex: 1;
   height: 1px;
-  background: ${T.border};
+  background: ${({ theme }) => theme?.colors?.border || '#e8edf3'};
 `;
 
 /* ── Stat cards grid ── */
@@ -201,9 +201,9 @@ const KpiGrid = styled.div`
 `;
 
 const KpiCard = styled.div`
-  background: ${T.white};
+  background: ${({ theme }) => theme?.colors?.surface || '#ffffff'};
   border-radius: 14px;
-  border: 1px solid ${T.border};
+  border: 1px solid ${({ theme }) => theme?.colors?.border || '#e8edf3'};
   padding: 20px 22px 18px;
   position: relative;
   overflow: hidden;
@@ -248,7 +248,7 @@ const KpiTop = styled.div`
 const KpiLabel = styled.div`
   font-size: 11px;
   font-weight: 500;
-  color: ${T.muted};
+  color: ${({ theme }) => theme?.colors?.textSecondary || '#8896a8'};
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1.3;
@@ -271,7 +271,7 @@ const KpiValue = styled.div`
   font-family: 'Sora', sans-serif;
   font-size: 32px;
   font-weight: 700;
-  color: ${T.navy};
+  color: ${({ theme }) => theme?.colors?.text || '#0a1628'};
   line-height: 1;
   margin-bottom: 6px;
   animation: ${countUp} 0.5s ease both;
@@ -279,7 +279,7 @@ const KpiValue = styled.div`
 
 const KpiNote = styled.div`
   font-size: 11px;
-  color: ${T.muted};
+  color: ${({ theme }) => theme?.colors?.textSecondary || '#8896a8'};
   display: flex;
   align-items: center;
   gap: 4px;
@@ -299,7 +299,7 @@ const KpiTrend = styled.span`
 
 /* ── Featured metric card — large hero KPI ── */
 const HeroKpi = styled.div`
-  background: linear-gradient(135deg, ${T.navy} 0%, ${T.navyMid} 100%);
+  background: linear-gradient(135deg, ${({ theme }) => theme?.colors?.headerBg || '#0f1923'} 0%, #162035 100%);
   border-radius: 16px;
   padding: 24px 26px;
   display: flex;
@@ -396,9 +396,9 @@ const TableGrid = styled.div`
 `;
 
 const Panel = styled.div`
-  background: ${T.white};
+  background: ${({ theme }) => theme?.colors?.surface || '#ffffff'};
   border-radius: 14px;
-  border: 1px solid ${T.border};
+  border: 1px solid ${({ theme }) => theme?.colors?.border || '#e8edf3'};
   overflow: hidden;
 `;
 
@@ -407,14 +407,14 @@ const PanelHead = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px 14px;
-  border-bottom: 1px solid ${T.border};
+  border-bottom: 1px solid ${({ theme }) => theme?.colors?.border || '#e8edf3'};
 `;
 
 const PanelTitle = styled.div`
   font-family: 'Sora', sans-serif;
   font-size: 13px;
   font-weight: 600;
-  color: ${T.navy};
+  color: ${({ theme }) => theme?.colors?.text || '#0a1628'};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -431,8 +431,8 @@ const PanelIcon = styled.div`
 const PanelBadge = styled.div`
   font-family: 'DM Mono', monospace;
   font-size: 10px;
-  color: ${T.muted};
-  background: ${T.bg};
+  color: ${({ theme }) => theme?.colors?.textSecondary || '#8896a8'};
+  background: ${({ theme }) => theme?.colors?.background || '#f5f7fa'};
   border-radius: 5px;
   padding: 2px 7px;
 `;
@@ -442,7 +442,7 @@ const Row = styled.div`
   grid-template-columns: ${({ $cols }) => $cols || '1fr 1fr 80px'};
   padding: 11px 20px;
   align-items: center;
-  border-bottom: 1px solid ${T.bg};
+  border-bottom: 1px solid ${({ theme }) => theme?.colors?.background || '#f5f7fa'};
   transition: background 0.12s;
 
   &:last-child { border-bottom: none; }
@@ -450,8 +450,8 @@ const Row = styled.div`
 `;
 
 const HeadRow = styled(Row)`
-  background: ${T.bg};
-  border-bottom: 1px solid ${T.border};
+  background: ${({ theme }) => theme?.colors?.background || '#f5f7fa'};
+  border-bottom: 1px solid ${({ theme }) => theme?.colors?.border || '#e8edf3'};
   padding: 9px 20px;
   pointer-events: none;
 `;
@@ -459,7 +459,7 @@ const HeadRow = styled(Row)`
 const Cell = styled.div`
   font-size: ${({ $head }) => $head ? '10px' : '13px'};
   font-weight: ${({ $head, $bold }) => $head ? '600' : $bold ? '600' : '400'};
-  color: ${({ $head, $muted }) => $head ? T.muted : $muted ? T.muted : T.navy};
+  color: ${({ theme, $head, $muted }) => $head ? (theme?.colors?.textSecondary || '#8896a8') : $muted ? (theme?.colors?.textSecondary || '#8896a8') : (theme?.colors?.text || '#0a1628')};
   text-transform: ${({ $head }) => $head ? 'uppercase' : 'none'};
   letter-spacing: ${({ $head }) => $head ? '0.06em' : '0'};
   white-space: nowrap;
@@ -476,22 +476,22 @@ const StatusTag = styled.span`
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: ${({ $s }) => STATUS_BG[$s]  || T.bg};
-  color:      ${({ $s }) => STATUS_FG[$s]  || T.muted};
+  background: ${({ theme, $s }) => STATUS_BG[$s]  || theme?.colors?.background || '#f5f7fa'};
+  color:      ${({ theme, $s }) => STATUS_FG[$s]  || theme?.colors?.textSecondary || '#8896a8'};
   border: 1px solid ${({ $s }) => STATUS_BD[$s] || T.border};
 `;
 
 const EmptyPanel = styled.div`
   padding: 40px 20px;
   text-align: center;
-  color: ${T.muted};
+  color: ${({ theme }) => theme?.colors?.textSecondary || '#8896a8'};
   font-size: 13px;
 
   &::before {
     content: '—';
     display: block;
     font-size: 24px;
-    color: ${T.border};
+    color: ${({ theme }) => theme?.colors?.border || '#e8edf3'};
     margin-bottom: 8px;
     font-family: 'Sora', sans-serif;
   }
@@ -653,8 +653,11 @@ export default function DashboardPage() {
     });
   }
 
+
+
   return (
     <>
+
       <Page>
 
         {/* ── Hero ─────────────────────────────────────────────────────── */}

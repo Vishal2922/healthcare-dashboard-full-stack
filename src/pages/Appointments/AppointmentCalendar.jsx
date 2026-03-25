@@ -3,6 +3,7 @@ import useAppointments from '../../modules/appointments/hooks/useAppointments';
 import usePatients from '../../modules/patients/hooks/usePatients';
 import useUsers from '../../modules/users/hooks/useUsers';
 import AppointmentForm from '../../components/forms/AppointmentForm';
+import { useTheme } from 'styled-components';
 
 export default function AppointmentCalendar() {
   const {
@@ -18,6 +19,13 @@ export default function AppointmentCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [showBookModal, setShowBookModal] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState(null);
+
+  const theme = useTheme();
+  const textColor = theme?.colors?.text || '#1a202c';
+  const textSecondary = theme?.colors?.textSecondary || '#4a5568';
+  const pageBg = theme?.colors?.background || '#f7f5f0';
+  const surfaceBg = theme?.colors?.surface || '#fff';
+  const borderColor = theme?.colors?.border || '#edf2f7';
 
   useEffect(() => {
     loadAppointments({ page: 1, perPage: 100 });
@@ -86,9 +94,9 @@ export default function AppointmentCalendar() {
       const isToday = dateStr === todayStr;
       const appts = byDate[dateStr] || [];
       cells.push(
-        <div key={dateStr} style={{ ...S.dayCell, background: isToday ? '#ebf8ff' : '#fff', border: isToday ? '1px solid #3182ce' : '1px solid #edf2f7', cursor: 'pointer' }}
+        <div key={dateStr} style={{ ...S.dayCell, background: isToday ? '#ebf8ff' : surfaceBg, border: isToday ? '1px solid #3182ce' : `1px solid ${borderColor}`, cursor: 'pointer' }}
           onClick={() => setShowBookModal(true)}>
-          <div style={{ fontSize: 13, marginBottom: 3, fontWeight: isToday ? 800 : 500, color: isToday ? '#3182ce' : '#4a5568' }}>{d}</div>
+          <div style={{ fontSize: 13, marginBottom: 3, fontWeight: isToday ? 800 : 500, color: isToday ? '#3182ce' : textSecondary }}>{d}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {appts.slice(0, 3).map((a) => <ApptCard key={a.id} appt={a} />)}
             {appts.length > 3 && <span style={{ fontSize: 10, color: '#a0aec0', paddingLeft: 4 }}>+{appts.length - 3} more</span>}
@@ -99,7 +107,7 @@ export default function AppointmentCalendar() {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)' }}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-          <div key={d} style={{ padding: '10px 0', textAlign: 'center', fontWeight: 700, fontSize: 11, color: '#718096', textTransform: 'uppercase', borderBottom: '1px solid #edf2f7', background: '#f7fafc' }}>{d}</div>
+          <div key={d} style={{ padding: '10px 0', textAlign: 'center', fontWeight: 700, fontSize: 11, color: textSecondary, textTransform: 'uppercase', borderBottom: `1px solid ${borderColor}`, background: theme?.colors?.sidebarBg || '#f7fafc' }}>{d}</div>
         ))}
         {cells}
       </div>
@@ -116,8 +124,8 @@ export default function AppointmentCalendar() {
           const isToday = dateStr === todayStr;
           const appts = byDate[dateStr] || [];
           return (
-            <div key={dateStr} style={{ borderRight: '1px solid #edf2f7', padding: '8px 6px', background: isToday ? '#ebf8ff' : '#fff' }}>
-              <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, marginBottom: 8, color: isToday ? '#3182ce' : '#718096' }}>
+            <div key={dateStr} style={{ borderRight: `1px solid ${borderColor}`, padding: '8px 6px', background: isToday ? '#ebf8ff' : surfaceBg }}>
+              <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, marginBottom: 8, color: isToday ? '#3182ce' : textSecondary }}>
                 <span>{d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
                 <strong style={{ display: 'block', fontSize: 16 }}>{d.getDate()}</strong>
               </div>
@@ -165,15 +173,15 @@ export default function AppointmentCalendar() {
     const next = NEXT_STATUSES[selectedAppt.status] || [];
     return (
       <div onClick={() => setSelectedAppt(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, padding: '24px 28px', width: '100%', maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ background: surfaceBg, borderRadius: 12, padding: '24px 28px', width: '100%', maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Appointment Detail</h3>
-            <button onClick={() => setSelectedAppt(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#718096' }}>✕</button>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: textColor }}>Appointment Detail</h3>
+            <button onClick={() => setSelectedAppt(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: theme?.colors?.textSecondary || '#718096' }}>✕</button>
           </div>
           {[['Patient', selectedAppt.patient_name || `#${selectedAppt.patient_id}`], ['Doctor', selectedAppt.doctor_name || `#${selectedAppt.doctor_id}`], ['Time', new Date(selectedAppt.appointment_time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })], ['Status', selectedAppt.status], ['Reason', selectedAppt.reason || '—']].map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f7fafc' }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#a0aec0', textTransform: 'uppercase' }}>{k}</span>
-              <span style={{ fontSize: 13, color: '#2d3748', textAlign: 'right', maxWidth: '60%' }}>{v}</span>
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${borderColor}` }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme?.colors?.textSecondary || '#a0aec0', textTransform: 'uppercase' }}>{k}</span>
+              <span style={{ fontSize: 13, color: textColor, textAlign: 'right', maxWidth: '60%' }}>{v}</span>
             </div>
           ))}
           {!isFinal && !busy && (
@@ -195,10 +203,10 @@ export default function AppointmentCalendar() {
   };
 
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, background: pageBg }}>
       <div style={S.header}>
         <div>
-          <h1 style={S.title}>Appointment Calendar</h1>
+          <h1 style={{ ...S.title, color: textColor }}>Appointment Calendar</h1>
           <p style={S.subtitle}>Visualise and manage appointments by date</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -213,7 +221,7 @@ export default function AppointmentCalendar() {
           <button style={S.navBtn} onClick={() => navigate(-1)}>‹</button>
           <button style={S.navBtn} onClick={() => setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1))}>Today</button>
           <button style={S.navBtn} onClick={() => navigate(1)}>›</button>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#1a202c', marginLeft: 4 }}>{periodLabel}</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: textColor, marginLeft: 4 }}>{periodLabel}</span>
           {loading && <span style={{ fontSize: 12, color: '#a0aec0' }}>…</span>}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
@@ -263,7 +271,7 @@ const S = {
   offlinePill: { background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: '#856404' },
   drainingPill: { background: '#e9d8fd', border: '1px solid #805ad5', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: '#553c9a' },
   bookBtn: { background: '#3182ce', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
-  toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12, background: '#fff', borderRadius: 10, padding: '12px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
-  navBtn: { padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#f7fafc', cursor: 'pointer', fontSize: 14, color: '#4a5568' },
-  dayCell: { minHeight: 100, padding: '6px 8px', boxSizing: 'border-box', borderRight: '1px solid #edf2f7' },
+  toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12, background: 'transparent', borderRadius: 10, padding: '12px 0px' },
+  navBtn: { padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: 'transparent', cursor: 'pointer', fontSize: 14, color: '#3182ce', fontWeight: 600 },
+  dayCell: { minHeight: 100, padding: '6px 8px', boxSizing: 'border-box' },
 };

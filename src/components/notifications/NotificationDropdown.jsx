@@ -27,7 +27,7 @@ const Panel = styled.div`
   top: 54px; right: 0;
   width: 380px;
   max-height: 480px;
-  background: #fff;
+  background: ${({ theme }) => theme?.colors?.surface || '#fff'};
   border-radius: 14px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
   z-index: 300;
@@ -43,13 +43,13 @@ const Head = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid ${({ theme }) => theme?.colors?.border || '#f0f0f0'};
 `;
 
 const Title = styled.span`
   font-size: 15px;
   font-weight: 700;
-  color: #1a202c;
+  color: ${({ theme }) => theme?.colors?.text || '#1a202c'};
 `;
 
 const MarkAllBtn = styled.button`
@@ -85,11 +85,11 @@ const Item = styled.div`
   align-items: flex-start;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid #fafafa;
-  background: ${({ $unread }) => ($unread ? '#f0f9ff' : '#fff')};
+  border-bottom: 1px solid ${({ theme }) => theme?.colors?.border || '#fafafa'};
+  background: ${({ theme, $unread }) => $unread ? (theme?.colors?.primary ? `${theme.colors.primary}15` : '#f0f9ff') : 'transparent'};
   transition: background 0.12s;
   cursor: pointer;
-  &:hover { background: ${({ $unread }) => ($unread ? '#e6f4ff' : '#f7fafc')}; }
+  &:hover { background: ${({ theme, $unread }) => $unread ? (theme?.colors?.primary ? `${theme.colors.primary}25` : '#e6f4ff') : (theme?.colors?.background || '#f7fafc')}; }
 `;
 
 const Dot = styled.div`
@@ -109,7 +109,7 @@ const ItemBody = styled.div`
 const ItemTitle = styled.div`
   font-size: 13px;
   font-weight: ${({ $unread }) => ($unread ? 700 : 500)};
-  color: #1a202c;
+  color: ${({ theme }) => theme?.colors?.text || '#1a202c'};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -117,7 +117,7 @@ const ItemTitle = styled.div`
 
 const ItemMsg = styled.div`
   font-size: 12px;
-  color: #718096;
+  color: ${({ theme }) => theme?.colors?.textSecondary || '#718096'};
   margin-top: 2px;
   display: -webkit-box;
   -webkit-line-clamp: 2;

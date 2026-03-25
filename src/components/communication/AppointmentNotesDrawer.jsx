@@ -34,7 +34,7 @@ const Drawer = styled.div`
   width: 440px;
   max-width: 100vw;
   height: 100vh;
-  background: #fff;
+  background: ${({ theme }) => theme?.colors?.surface || '#fff'};
   z-index: 401;
   display: flex;
   flex-direction: column;
@@ -48,14 +48,14 @@ const DrawerHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafbfc;
+  border-bottom: 1px solid ${({ theme }) => theme?.colors?.border || '#f0f0f0'};
+  background: ${({ theme }) => theme?.colors?.background || '#fafbfc'};
 `;
 
 const DrawerTitle = styled.div`
   font-size: 16px;
   font-weight: 700;
-  color: #1a202c;
+  color: ${({ theme }) => theme?.colors?.text || '#1a202c'};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -91,8 +91,8 @@ const EmptyNotes = styled.div`
 `;
 
 const NoteCard = styled.div`
-  background: ${({ $own }) => ($own ? '#f0f9ff' : '#f7fafc')};
-  border: 1px solid ${({ $own }) => ($own ? '#bee3f8' : '#edf2f7')};
+  background: ${({ theme, $own }) => $own ? (theme?.colors?.primary ? `${theme.colors.primary}15` : '#f0f9ff') : (theme?.colors?.background || '#f7fafc')};
+  border: 1px solid ${({ theme, $own }) => $own ? (theme?.colors?.primary ? `${theme.colors.primary}30` : '#bee3f8') : (theme?.colors?.border || '#edf2f7')};
   border-radius: 10px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -114,7 +114,7 @@ const NoteAuthor = styled.span`
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #2d3748;
+  color: ${({ theme }) => theme?.colors?.text || '#2d3748'};
 `;
 
 const NoteTypeBadge = styled.span`
@@ -138,7 +138,7 @@ const NoteTypeBadge = styled.span`
 
 const NoteBody = styled.div`
   font-size: 13px;
-  color: #2d3748;
+  color: ${({ theme }) => theme?.colors?.text || '#2d3748'};
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -163,9 +163,9 @@ const NoteDeleteBtn = styled.button`
 `;
 
 const InputArea = styled.div`
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid ${({ theme }) => theme?.colors?.border || '#f0f0f0'};
   padding: 16px 24px;
-  background: #fafbfc;
+  background: ${({ theme }) => theme?.colors?.background || '#fafbfc'};
 `;
 
 const TypeSelector = styled.div`
@@ -180,9 +180,9 @@ const TypeChip = styled.button`
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 14px;
-  border: 1px solid ${({ $active }) => ($active ? '#3182ce' : '#e2e8f0')};
-  background: ${({ $active }) => ($active ? '#ebf8ff' : '#fff')};
-  color: ${({ $active }) => ($active ? '#2b6cb0' : '#718096')};
+  border: 1px solid ${({ theme, $active }) => $active ? theme?.colors?.primary || '#3182ce' : theme?.colors?.border || '#e2e8f0'};
+  background: ${({ theme, $active }) => $active ? (theme?.colors?.primary ? `${theme.colors.primary}20` : '#ebf8ff') : 'transparent'};
+  color: ${({ theme, $active }) => $active ? theme?.colors?.primary || '#2b6cb0' : theme?.colors?.textSecondary || '#718096'};
   cursor: pointer;
   transition: all 0.12s;
   &:hover { border-color: #3182ce; }
@@ -195,7 +195,8 @@ const InputRow = styled.div`
 
 const TextInput = styled.textarea`
   flex: 1;
-  border: 1px solid #e2e8f0;
+  border: 1px solid ${({ theme }) => theme?.colors?.border || '#e2e8f0'};
+  background: transparent;
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
@@ -203,10 +204,10 @@ const TextInput = styled.textarea`
   resize: none;
   min-height: 44px;
   max-height: 100px;
-  color: #2d3748;
+  color: ${({ theme }) => theme?.colors?.text || '#2d3748'};
   transition: border-color 0.15s;
-  &:focus { outline: none; border-color: #3182ce; }
-  &::placeholder { color: #cbd5e0; }
+  &:focus { outline: none; border-color: ${({ theme }) => theme?.colors?.primary || '#3182ce'}; }
+  &::placeholder { color: ${({ theme }) => theme?.colors?.textSecondary || '#cbd5e0'}; }
 `;
 
 const SendBtn = styled.button`

@@ -10,6 +10,7 @@ import {
   UserOutlined,
   FileTextOutlined,
   BgColorsOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import useAuth from '../../modules/auth/hooks/useAuth';
 
@@ -62,6 +63,12 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN],
   },
   {
+    to: '/settings/profile',
+    label: 'My Profile',
+    Icon: IdcardOutlined,
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST, ROLES.NURSE, ROLES.RECEPTIONIST],
+  },
+  {
     to: '/settings/staff',
     label: 'Staff',
     Icon: MedicineBoxOutlined,
@@ -81,7 +88,7 @@ const NAV_ITEMS = [
   },
 ];
 
-const SETTINGS_PATHS = ['/settings/users', '/settings/staff', '/settings/theme'];
+const SETTINGS_PATHS = ['/settings/profile', '/settings/users', '/settings/staff', '/settings/theme'];
 
 // ─── Styled Components ────────────────────────────────────────────────────────
 const Nav = styled.aside`
