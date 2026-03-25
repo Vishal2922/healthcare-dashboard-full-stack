@@ -20,6 +20,16 @@ import {
 } from '@ant-design/icons';
 
 import usePrescriptions from '../../modules/prescriptions/hooks/usePrescriptions';
+import {
+  fetchPrescriptionsRequest,
+  serveFromCache as rxServeFromCache,
+  selectPrescriptionMeta,
+  selectPrescriptionPageCache,
+  selectPrescriptionFilters,
+  selectPrescriptionPrefetching,
+} from '../../modules/prescriptions/prescriptionSlice';
+import usePrefetchPagination from '../../hooks/usePrefetchPagination';
+import PaginationBar from '../../components/PaginationBar';
 import usePermission from '../../hooks/usePermission';
 import useAuth from '../../modules/auth/hooks/useAuth';
 import { useSelector } from 'react-redux';
@@ -160,8 +170,22 @@ export default function PrescriptionList() {
   const canUpdate   = can('prescriptions', 'update');
   const canDispense = can('prescriptions', 'dispense');
 
+  // ── Prefetch pagination ────────────────────────────────────────────────────
+  const prefetching = useSelector(selectPrescriptionPrefetching);
+
+  const pagination = usePrefetchPagination({
+    fetchAction:          fetchPrescriptionsRequest,
+    metaSelector:         selectPrescriptionMeta,
+    pageCacheSelector:    selectPrescriptionPageCache,
+    serveFromCacheAction: rxServeFromCache,
+    listLoading:          listLoading ?? false,
+    debounceMs:           200,
+    cacheKeyPrefix:       'prescriptions',
+    filtersSelector:      selectPrescriptionFilters,
+  });
+
   // ── Computed stats from full list ──────────────────────────────────────────
-  const total      = list.length;
+  const total      = pagination.total || list.length;
   const pending    = list.filter((r) => r.status === 'pending').length;
   const dispensed  = list.filter((r) => r.status === 'dispensed').length;
 
@@ -477,15 +501,18 @@ export default function PrescriptionList() {
           dataSource={filteredList}
           rowKey="id"
           loading={listLoading}
-          pagination={{
-            pageSize: 15,
-            showSizeChanger: true,
-            showTotal: (t) => `${t} prescriptions`,
-            style: { padding: '16px 20px' },
-          }}
+          pagination={false}
           scroll={{ x: 900 }}
           style={{ borderRadius: '0 0 12px 12px' }}
         />
+
+        {/* Prefetch pagination bar */}
+        <div style={{ padding: '8px 16px', borderTop: '1px solid #f9fafb' }}>
+          <PaginationBar
+            {...pagination}
+            isPrefetching={prefetching}
+          />
+        </div>
       </TableCard>
 
       {/* ── Create / Edit Drawer ──────────────────────────────────────────── */}
