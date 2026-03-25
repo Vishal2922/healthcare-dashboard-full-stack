@@ -1,3 +1,11 @@
+/**
+ * rootSaga.js  (UPDATED — adds offlineSaga)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Changes from original:
+ *   • offlineSaga added — runs the network watcher, IndexedDB hydration,
+ *     and queue flush machinery for all modules
+ */
+
 import { all } from 'redux-saga/effects';
 
 import authSaga          from '../modules/auth/authSaga';
@@ -12,6 +20,9 @@ import notificationSaga  from '../modules/notifications/notificationSaga';
 import communicationSaga from '../modules/communication/communicationSaga';
 import idleSettingsSaga  from '../modules/idleSettings/idleSettingsSaga'; // ← NEW
 
+// ── NEW ───────────────────────────────────────────────────────────────────────
+import offlineSaga from '../modules/offline/offlineSaga';
+
 export default function* rootSaga() {
   yield all([
     authSaga(),
@@ -25,5 +36,7 @@ export default function* rootSaga() {
     notificationSaga(),
     communicationSaga(),
     idleSettingsSaga(), // ← NEW
+    // ── NEW: boots the network watcher + IndexedDB queue ────────────────────
+    offlineSaga(),
   ]);
 }

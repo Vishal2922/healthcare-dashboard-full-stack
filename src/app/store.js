@@ -13,6 +13,8 @@ import notificationReducer  from '../modules/notifications/notificationSlice';
 import communicationReducer from '../modules/communication/communicationSlice';
 import idleSettingsReducer  from '../modules/idleSettings/idleSettingsSlice'; // ← NEW
 
+import offlineReducer from '../modules/offline/offlineSlice';
+
 import rootSaga from './rootSaga';
 
 const sagaMiddleware = createSagaMiddleware();
@@ -30,6 +32,8 @@ const store = configureStore({
     notifications: notificationReducer,
     communication: communicationReducer,
     idleSettings:  idleSettingsReducer, // ← NEW
+    // ── NEW ──────────────────────────────────────────────────────────────────
+    offline:       offlineReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ thunk: false }).concat(sagaMiddleware),

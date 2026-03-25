@@ -1,18 +1,30 @@
+/**
+ * staffSlice.js  (UPDATED — adds createStaffMember + updateStaffMember)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Delta: adds create/update staff reducers + offline indicators
+ */
+
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  roles: [],
+  roles:       [],
   permissions: [],
   selectedRole: null,
-  staffByRole: {},
-  loading: false,
-  submitting: false,
-  error: null,
+  staffByRole:  {},
+  loading:      false,
+  submitting:   false,
+  error:        null,
+  successMessage: null,
+
+  // ── Offline ────────────────────────────────────────────────────────────────
+  isOnline:   true,
+  isFlushing: false,
 };
 
 const staffSlice = createSlice({
   name: 'staff',
   initialState,
+
   reducers: {
 
     fetchRolesRequest: (state) => { state.loading = true; state.error = null; },
@@ -62,8 +74,55 @@ const staffSlice = createSlice({
     },
     fetchStaffByRoleFailure: (state, action) => { state.loading = false; state.error = action.payload; },
 
-    clearSelectedRole: (state) => { state.selectedRole = null; },
-    clearStaffError:   (state) => { state.error = null; },
+    // ── NEW: Create Staff Member ──────────────────────────────────────────────
+    createStaffMemberRequest: (state) => {
+      state.submitting     = true;
+      state.error          = null;
+      state.successMessage = null;
+    },
+    createStaffMemberSuccess: (state, action) => {
+      state.submitting     = false;
+      state.successMessage = 'Staff member added successfully.';
+      // Add to the appropriate role bucket
+      const staff  = action.payload?.staff ?? action.payload?.user ?? action.payload;
+      const roleId = staff?.role_id;
+      if (roleId && state.staffByRole[roleId]) {
+        state.staffByRole[roleId].unshift(staff);
+      }
+    },
+    createStaffMemberFailure: (state, action) => {
+      state.submitting = false;
+      state.error      = action.payload;
+    },
+
+    // ── NEW: Update Staff Member ──────────────────────────────────────────────
+    updateStaffMemberRequest: (state) => {
+      state.submitting     = true;
+      state.error          = null;
+      state.successMessage = null;
+    },
+    updateStaffMemberSuccess: (state, action) => {
+      state.submitting     = false;
+      state.successMessage = 'Staff member updated.';
+      const updated = action.payload?.staff ?? action.payload?.user ?? action.payload;
+      Object.keys(state.staffByRole).forEach((roleId) => {
+        state.staffByRole[roleId] = state.staffByRole[roleId].map((s) =>
+          s.id === updated.id ? { ...s, ...updated } : s
+        );
+      });
+    },
+    updateStaffMemberFailure: (state, action) => {
+      state.submitting = false;
+      state.error      = action.payload;
+    },
+
+    // ── Offline indicators ────────────────────────────────────────────────────
+    setOnlineStatus:   (state, action) => { state.isOnline   = action.payload; },
+    setFlushingStatus: (state, action) => { state.isFlushing = action.payload; },
+
+    clearSelectedRole: (state) => { state.selectedRole  = null; },
+    clearStaffError:   (state) => { state.error         = null; },
+    clearStaffSuccess: (state) => { state.successMessage = null; },
   },
 });
 
@@ -75,7 +134,10 @@ export const {
   activateStaffRequest, activateStaffSuccess, activateStaffFailure,
   deactivateStaffRequest, deactivateStaffSuccess, deactivateStaffFailure,
   fetchStaffByRoleRequest, fetchStaffByRoleSuccess, fetchStaffByRoleFailure,
-  clearSelectedRole, clearStaffError,
+  createStaffMemberRequest, createStaffMemberSuccess, createStaffMemberFailure,
+  updateStaffMemberRequest, updateStaffMemberSuccess, updateStaffMemberFailure,
+  setOnlineStatus, setFlushingStatus,
+  clearSelectedRole, clearStaffError, clearStaffSuccess,
 } = staffSlice.actions;
 
 export default staffSlice.reducer;

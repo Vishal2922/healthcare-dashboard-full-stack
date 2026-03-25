@@ -16,7 +16,16 @@ import {
 import dayjs from 'dayjs';
 
 import useBilling from '../../modules/billing/hooks/useBilling';
-import { fetchInvoicesRequest } from '../../modules/billing/billingSlice';
+import {
+  fetchInvoicesRequest,
+  serveFromCache as billServeFromCache,
+  selectBillingMeta,
+  selectBillingPageCache,
+  selectBillingFilters,
+  selectBillingPrefetching,
+} from '../../modules/billing/billingSlice';
+import usePrefetchPagination from '../../hooks/usePrefetchPagination';
+import PaginationBar from '../../components/PaginationBar';
 import useDebounce from '../../hooks/useDebounce';
 import InvoiceFormDrawer from '../../components/forms/InvoiceFormDrawer';
 import InvoiceDetailDrawer from '../../components/forms/InvoiceDetailDrawer';
@@ -261,6 +270,27 @@ export default function InvoicePage() {
   const fetchInvoices = billing.accessDenied ? null : billing.fetchInvoices;
   const clearFilters  = billing.accessDenied ? null : billing.clearFilters;
 
+  // ── Prefetch pagination (must be before any conditional return) ─────────
+  const prefetching = useSelector(selectBillingPrefetching);
+  const {
+    invoiceList, summary, meta, filters, listLoading, formLoading,
+    summaryLoading, error, successMessage, isOnline, pendingCount, isFlushing,
+    canWrite, canDelete,
+    createInvoice, updateInvoiceStatus, deleteInvoice, fetchInvoiceById,
+    selectInvoice, clearInvoice, dismissError, dismissSuccess,
+  } = billing.accessDenied ? {} : billing;
+
+  const pagination = usePrefetchPagination({
+    fetchAction:          fetchInvoicesRequest,
+    metaSelector:         selectBillingMeta,
+    pageCacheSelector:    selectBillingPageCache,
+    serveFromCacheAction: billServeFromCache,
+    listLoading:          listLoading ?? false,
+    debounceMs:           200,
+    cacheKeyPrefix:       'billing',
+    filtersSelector:      selectBillingFilters,
+  });
+
   useEffect(() => {
     if (!applyFilters) return;
     applyFilters({ search: debouncedSearch });
@@ -285,14 +315,6 @@ export default function InvoicePage() {
       </PageWrapper>
     );
   }
-
-  const {
-    invoiceList, summary, meta, filters, listLoading, formLoading,
-    summaryLoading, error, successMessage, isOnline, pendingCount, isFlushing,
-    canWrite, canDelete,
-    createInvoice, updateInvoiceStatus, deleteInvoice, fetchInvoiceById,
-    selectInvoice, clearInvoice, dismissError, dismissSuccess,
-  } = billing;
 
   const handleView = (record) => {
     selectInvoice(record);
@@ -335,10 +357,6 @@ export default function InvoicePage() {
     setSearchText('');
     clearFilters();
     fetchInvoices({ page: 1 });
-  };
-
-  const handleTableChange = (pag) => {
-    fetchInvoices({ page: pag.current, per_page: pag.pageSize });
   };
 
   const columns = buildColumns({
@@ -513,21 +531,21 @@ export default function InvoicePage() {
           dataSource={invoiceList}
           rowKey="id"
           loading={listLoading}
-          pagination={{
-            current:         meta.page,
-            pageSize:        meta.per_page,
-            total:           meta.total,
-            showSizeChanger: true,
-            showTotal:       (t) => `${t} invoices`,
-            style:           { padding: '16px 20px' },
-          }}
-          onChange={handleTableChange}
+          pagination={false}
           scroll={{ x: 800 }}
           onRow={(record) => ({
             onDoubleClick: () => handleView(record),
           })}
           style={{ borderRadius: '0 0 12px 12px' }}
         />
+
+        {/* Prefetch pagination bar */}
+        <div style={{ padding: '8px 16px', borderTop: '1px solid #f9fafb' }}>
+          <PaginationBar
+            {...pagination}
+            isPrefetching={prefetching}
+          />
+        </div>
       </TableCard>
 
       {/* ── Create Invoice Drawer ─────────────────────────────────────── */}

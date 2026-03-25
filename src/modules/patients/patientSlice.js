@@ -1,33 +1,24 @@
-import { createSlice } from '@reduxjs/toolkit';
-
 /**
- * patientSlice — Module 8: Patient Management
- *
- * State shape:
- *   list            → paginated patient array (current page)
- *   selectedPatient → patient being viewed / edited
- *   meta            → { total, page, per_page, last_page }
- *   filters         → { search, gender, status }
- *   listLoading     → skeleton for table
- *   detailLoading   → skeleton for profile page
- *   formLoading     → submit spinner on create/edit form
- *   prefetchLoading → loading filter-option reference data
- *   prefetched      → boolean flag — prefetch done once per session
- *   error           → last error string (cleared on next request)
- *   successMessage  → shown in toast/alert after CUD action
- *   offlineQueue    → pending mutations queued while offline
- *                     [ { id, type:'create'|'update'|'delete', payload, timestamp, retries } ]
- *   isOnline        → navigator.onLine mirror
- *   isFlushing      → true while queue is draining
+ * patientSlice.js  (UPDATED — Offline Queue + Prefetch Pagination)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Changes from original:
+ *   • pageCache: object keyed by cacheKey → { data, meta }
+ *     Holds all previously-fetched pages in Redux for instant navigation.
+ *   • prefetchingPages: Set<string> — tracks in-flight prefetch requests
+ *   • nextPagePrefetched: boolean — true when next page is already prefetched
+ *   • Offline queue now delegates to global offlineSlice; kept for backwards
+ *     compatibility of local isOnline / isFlushing indicators.
  */
+
+import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   list: [],
   selectedPatient: null,
 
   meta: {
-    total: 0,
-    page: 1,
+    total:    0,
+    page:     1,
     per_page: 10,
     last_page: 1,
   },
@@ -38,6 +29,10 @@ const initialState = {
     status: 'active',
   },
 
+  // ── Page cache (cacheKey → { data, meta }) ─────────────────────────────────
+  pageCache:   {},
+  prefetching: false,    // true while a background prefetch is running
+
   listLoading:    false,
   detailLoading:  false,
   formLoading:    false,
@@ -47,10 +42,12 @@ const initialState = {
   error:          null,
   successMessage: null,
 
-  // ── Offline Queue ────────────────────────────────────────────────────────
+  // ── Offline indicators (mirrors global offlineSlice) ──────────────────────
+  isOnline:   true,
+  isFlushing: false,
+
+  // Legacy queue kept for compatibility with existing usePatients hook
   offlineQueue: [],
-  isOnline:     true,
-  isFlushing:   false,
 };
 
 const patientSlice = createSlice({
@@ -58,7 +55,8 @@ const patientSlice = createSlice({
   initialState,
 
   reducers: {
-    // ── Fetch List ────────────────────────────────────────────────────────
+
+    // ── Fetch List ────────────────────────────────────────────────────────────
     fetchPatientsRequest: (state, action) => {
       state.listLoading = true;
       state.error       = null;
@@ -67,16 +65,50 @@ const patientSlice = createSlice({
       }
     },
     fetchPatientsSuccess: (state, action) => {
-      state.list        = action.payload.data;
-      state.meta        = action.payload.meta;
+      const { data, meta, cacheKey } = action.payload;
+      state.list        = data;
+      state.meta        = meta;
       state.listLoading = false;
+
+      // Store in page cache
+      if (cacheKey) {
+        state.pageCache[cacheKey] = { data, meta };
+      }
     },
     fetchPatientsFailure: (state, action) => {
       state.listLoading = false;
       state.error       = action.payload;
     },
 
-    // ── Fetch Single ──────────────────────────────────────────────────────
+    // ── Serve from Cache (instant navigation) ─────────────────────────────────
+    serveFromCache: (state, action) => {
+      const { data, meta } = action.payload;
+      state.list      = data;
+      state.meta      = meta;
+      state.listLoading = false; // no loading spinner for cache hits
+    },
+
+    // ── Prefetch Next Page ────────────────────────────────────────────────────
+    prefetchPageRequest: (state) => {
+      state.prefetching = true;
+    },
+    prefetchPageSuccess: (state, action) => {
+      const { cacheKey, data, meta } = action.payload;
+      state.prefetching = false;
+      if (cacheKey) {
+        state.pageCache[cacheKey] = { data, meta };
+      }
+    },
+    prefetchPageFailure: (state) => {
+      state.prefetching = false; // silent fail — prefetch is best-effort
+    },
+
+    // ── Invalidate cache (after mutations) ────────────────────────────────────
+    invalidatePageCache: (state) => {
+      state.pageCache = {};
+    },
+
+    // ── Fetch Single ──────────────────────────────────────────────────────────
     fetchPatientByIdRequest: (state) => {
       state.detailLoading = true;
       state.error         = null;
@@ -90,27 +122,28 @@ const patientSlice = createSlice({
       state.error         = action.payload;
     },
 
-    // ── Create ────────────────────────────────────────────────────────────
+    // ── Create ────────────────────────────────────────────────────────────────
     createPatientRequest: (state) => {
-      state.formLoading   = true;
-      state.error         = null;
+      state.formLoading    = true;
+      state.error          = null;
       state.successMessage = null;
     },
     createPatientSuccess: (state, action) => {
       state.formLoading    = false;
       state.successMessage = 'Patient registered successfully.';
       state.list.unshift(action.payload);
-      state.meta.total    += 1;
+      state.meta.total += 1;
+      state.pageCache   = {}; // invalidate cache after mutation
     },
     createPatientFailure: (state, action) => {
       state.formLoading = false;
       state.error       = action.payload;
     },
 
-    // ── Update ────────────────────────────────────────────────────────────
+    // ── Update ────────────────────────────────────────────────────────────────
     updatePatientRequest: (state) => {
-      state.formLoading   = true;
-      state.error         = null;
+      state.formLoading    = true;
+      state.error          = null;
       state.successMessage = null;
     },
     updatePatientSuccess: (state, action) => {
@@ -121,16 +154,17 @@ const patientSlice = createSlice({
       if (state.selectedPatient?.id === action.payload.id) {
         state.selectedPatient = action.payload;
       }
+      state.pageCache = {}; // invalidate cache after mutation
     },
     updatePatientFailure: (state, action) => {
       state.formLoading = false;
       state.error       = action.payload;
     },
 
-    // ── Delete ────────────────────────────────────────────────────────────
+    // ── Delete ────────────────────────────────────────────────────────────────
     deletePatientRequest: (state) => {
-      state.formLoading   = true;
-      state.error         = null;
+      state.formLoading    = true;
+      state.error          = null;
       state.successMessage = null;
     },
     deletePatientSuccess: (state, action) => {
@@ -138,18 +172,15 @@ const patientSlice = createSlice({
       state.successMessage = 'Patient record deleted.';
       state.list           = state.list.filter((p) => p.id !== action.payload);
       state.meta.total     = Math.max(0, state.meta.total - 1);
+      state.pageCache      = {}; // invalidate cache after mutation
     },
     deletePatientFailure: (state, action) => {
       state.formLoading = false;
       state.error       = action.payload;
     },
 
-    // ── Prefetch (filter reference data) ─────────────────────────────────
-    // Patient module doesn't need heavy prefetch like staff,
-    // but we still set the flag so the hook only runs once.
-    prefetchPatientsMetaRequest: (state) => {
-      state.prefetchLoading = true;
-    },
+    // ── Prefetch meta (filter ref data) ──────────────────────────────────────
+    prefetchPatientsMetaRequest: (state) => { state.prefetchLoading = true; },
     prefetchPatientsMetaSuccess: (state) => {
       state.prefetchLoading = false;
       state.prefetched      = true;
@@ -159,30 +190,35 @@ const patientSlice = createSlice({
       state.error           = action.payload;
     },
 
-    // ── Offline Queue ─────────────────────────────────────────────────────
-    enqueueOfflineAction: (state, action) => {
-      state.offlineQueue.push(action.payload);
+    // ── Offline status mirrors (synced from global offlineSlice) ─────────────
+    setOnlineStatus:       (state, action) => { state.isOnline   = action.payload; },
+    setFlushingStatus:     (state, action) => { state.isFlushing = action.payload; },
+
+    // ── Legacy offline queue (kept for hook compatibility) ────────────────────
+    enqueueOfflineAction:  (state, action) => { state.offlineQueue.push(action.payload); },
+    dequeueOfflineAction:  (state, action) => {
+      state.offlineQueue = state.offlineQueue.filter((i) => i.id !== action.payload);
     },
-    dequeueOfflineAction: (state, action) => {
-      state.offlineQueue = state.offlineQueue.filter(
-        (item) => item.id !== action.payload
-      );
-    },
-    flushOfflineQueueStart: (state) => { state.isFlushing = true;  },
-    flushOfflineQueueEnd:   (state) => { state.isFlushing = false; },
-    setOnlineStatus:        (state, action) => { state.isOnline = action.payload; },
-    incrementQueueRetry: (state, action) => {
+    flushOfflineQueueStart:(state) => { state.isFlushing = true;  },
+    flushOfflineQueueEnd:  (state) => { state.isFlushing = false; },
+    incrementQueueRetry:   (state, action) => {
       const item = state.offlineQueue.find((q) => q.id === action.payload);
       if (item) item.retries = (item.retries || 0) + 1;
     },
 
-    // ── UI Helpers ────────────────────────────────────────────────────────
-    setSelectedPatient:  (state, action) => { state.selectedPatient = action.payload; },
-    clearSelectedPatient:(state)         => { state.selectedPatient = null; },
-    setFilters:  (state, action) => { state.filters = { ...state.filters, ...action.payload }; },
-    resetFilters:(state)         => { state.filters = initialState.filters; },
-    clearSuccess:(state)         => { state.successMessage = null; },
-    clearError:  (state)         => { state.error = null; },
+    // ── UI Helpers ────────────────────────────────────────────────────────────
+    setSelectedPatient:   (state, action) => { state.selectedPatient = action.payload; },
+    clearSelectedPatient: (state)         => { state.selectedPatient = null; },
+    setFilters:  (state, action) => {
+      state.filters   = { ...state.filters, ...action.payload };
+      state.pageCache = {}; // filter change → invalidate all cached pages
+    },
+    resetFilters:(state) => {
+      state.filters   = initialState.filters;
+      state.pageCache = {};
+    },
+    clearSuccess:(state) => { state.successMessage = null; },
+    clearError:  (state) => { state.error = null; },
   },
 });
 
@@ -190,6 +226,11 @@ export const {
   fetchPatientsRequest,
   fetchPatientsSuccess,
   fetchPatientsFailure,
+  serveFromCache,
+  prefetchPageRequest,
+  prefetchPageSuccess,
+  prefetchPageFailure,
+  invalidatePageCache,
   fetchPatientByIdRequest,
   fetchPatientByIdSuccess,
   fetchPatientByIdFailure,
@@ -205,11 +246,12 @@ export const {
   prefetchPatientsMetaRequest,
   prefetchPatientsMetaSuccess,
   prefetchPatientsMetaFailure,
+  setOnlineStatus,
+  setFlushingStatus,
   enqueueOfflineAction,
   dequeueOfflineAction,
   flushOfflineQueueStart,
   flushOfflineQueueEnd,
-  setOnlineStatus,
   incrementQueueRetry,
   setSelectedPatient,
   clearSelectedPatient,
@@ -218,5 +260,22 @@ export const {
   clearSuccess,
   clearError,
 } = patientSlice.actions;
+
+// ── Selectors ────────────────────────────────────────────────────────────────
+export const selectPatientList        = (s) => s.patients.list;
+export const selectSelectedPatient    = (s) => s.patients.selectedPatient;
+export const selectPatientMeta        = (s) => s.patients.meta;
+export const selectPatientFilters     = (s) => s.patients.filters;
+export const selectPatientListLoading = (s) => s.patients.listLoading;
+export const selectPatientDetailLoading=(s) => s.patients.detailLoading;
+export const selectPatientFormLoading = (s) => s.patients.formLoading;
+export const selectPatientPrefetched  = (s) => s.patients.prefetched;
+export const selectPatientPrefetching = (s) => s.patients.prefetching;
+export const selectPatientPageCache   = (s) => s.patients.pageCache;
+export const selectPatientError       = (s) => s.patients.error;
+export const selectPatientSuccess     = (s) => s.patients.successMessage;
+export const selectPatientOfflineQueue= (s) => s.patients.offlineQueue;
+export const selectPatientIsOnline    = (s) => s.patients.isOnline;
+export const selectPatientIsFlushing  = (s) => s.patients.isFlushing;
 
 export default patientSlice.reducer;
