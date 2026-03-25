@@ -64,12 +64,9 @@ import {
   prefetchPatientsMetaRequest,
   prefetchPatientsMetaSuccess,
   prefetchPatientsMetaFailure,
-  setOnlineStatus,
-  setFlushingStatus,
   selectPatientMeta,
   selectPatientFilters,
   selectPatientPageCache,
-  selectPatientIsOnline,
 } from './patientSlice';
 
 // Global offline queue actions
@@ -118,6 +115,7 @@ function buildParams(actionPayload, meta, filters) {
 // ── Fetch Patients (cache-aware) ──────────────────────────────────────────────
 function* handleFetchPatients(action) {
   try {
+    const isPrefetch = !!action.payload?._prefetch;
     const filters = yield select(selectPatientFilters);
     const meta    = yield select(selectPatientMeta);
     const params  = buildParams(action.payload, meta, filters);
@@ -133,9 +131,40 @@ function* handleFetchPatients(action) {
     const reduxCache = yield select(selectPatientPageCache);
     const cached = reduxCache[cacheKey];
     if (cached && !action.payload?.forceRefresh) {
+      // Prefetch must not overwrite the visible list.
+      if (isPrefetch) return;
       yield put(serveFromCache(cached));
       // Prefetch next page immediately (no delay — data is already displayed)
       yield fork(prefetchNextPage, params, cached.meta);
+      return;
+    }
+
+    // ── Silent prefetch: fetch + store in pageCache only ─────────────────────
+    if (isPrefetch) {
+      if (inFlightPrefetches.has(cacheKey)) return;
+      inFlightPrefetches.add(cacheKey);
+
+      yield put(prefetchPageRequest());
+      try {
+        const response = yield call(fetchPatientListAPI, params);
+        const payload  = response?.data || response;
+
+        const rawPatients    = payload.patients || payload.data || [];
+        const mappedPatients = rawPatients.map(mapPatient);
+        const rawPagination  = payload.pagination ?? payload.meta ?? {};
+        const normMeta       = normaliseMeta(rawPagination, params);
+
+        yield put(prefetchPageSuccess({
+          cacheKey,
+          data:     mappedPatients,
+          meta:     normMeta,
+        }));
+      } catch (error) {
+        yield put(prefetchPageFailure());
+      } finally {
+        inFlightPrefetches.delete(cacheKey);
+      }
+
       return;
     }
 
@@ -309,21 +338,6 @@ function* handlePrefetchPatientsMeta() {
     yield put(prefetchPatientsMetaSuccess());
   } catch (error) {
     yield put(prefetchPatientsMetaFailure(errMsg(error, 'Prefetch failed.')));
-  }
-}
-
-// ── Sync online status from global offlineSlice ───────────────────────────────
-function* syncOnlineStatus() {
-  while (true) {
-    // React to global online status changes
-    yield take([
-      'offline/setOnlineStatus',
-      'offline/flushStart',
-      'offline/flushComplete',
-    ]);
-
-    // This is handled by offlineSaga; just mirror to local slice for UI
-    // (actual value is read from selectGlobalOnline in the handlers above)
   }
 }
 

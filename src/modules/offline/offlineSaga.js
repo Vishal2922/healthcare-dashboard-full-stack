@@ -28,14 +28,12 @@ import {
   select,
   take,
   fork,
-  cancel,
   cancelled,
   delay,
 } from 'redux-saga/effects';
 
 import { createNetworkChannel, checkOnline } from '../../services/networkMonitor';
 import queueManager from '../../services/offlineQueueManager';
-import pageCache    from '../../services/pageCacheManager';
 
 import {
   setOnlineStatus,
@@ -269,7 +267,6 @@ function* flushOfflineQueue() {
     yield put(flushComplete());
 
     // Refresh module data after sync
-    const remainingQueue = yield select(selectOfflineQueue);
     const syncedModules  = new Set(pendingItems.map((i) => i.module));
 
     if (syncedModules.has('patients'))      yield put(fetchPatientsRequest({ page: 1 }));

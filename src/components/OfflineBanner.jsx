@@ -117,7 +117,6 @@ export default function OfflineBanner() {
     isFlushing,
     pendingCount,
     failedCount,
-    lastSync,
     manualSync,
     dismissFailed,
   } = useOfflineQueue();

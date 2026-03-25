@@ -105,6 +105,7 @@ function* handleFetchBillingSummary() {
 // ── Fetch Invoices (cache-aware) ───────────────────────────────────────────────
 function* handleFetchInvoices(action) {
   try {
+    const isPrefetch = !!action.payload?._prefetch;
     const filters = yield select((s) => s.billing.filters);
     const meta    = yield select((s) => s.billing.meta);
     const params  = buildParams(action.payload, meta, filters);
@@ -115,8 +116,34 @@ function* handleFetchInvoices(action) {
     const reduxCache = yield select(selectBillingPageCache);
     const cached = reduxCache[cacheKey];
     if (cached && !action.payload?.forceRefresh) {
+      // Prefetch must not overwrite the visible list.
+      if (isPrefetch) return;
+
       yield put(serveFromCache(cached));
       yield fork(prefetchNextInvoicePage, params, cached.meta);
+      return;
+    }
+
+    // ── Silent prefetch: fetch + store in pageCache only ─────────────────────
+    if (isPrefetch) {
+      if (inFlightPrefetches.has(cacheKey)) return;
+      inFlightPrefetches.add(cacheKey);
+
+      yield put(prefetchPageRequest());
+      try {
+        const response = yield call(fetchInvoiceListAPI, params);
+        const payload  = response?.data || response;
+
+        const invoiceList   = payload.invoices ?? payload.data ?? [];
+        const rawPagination = payload.pagination ?? payload.meta ?? {};
+        const normMeta      = normaliseMeta(rawPagination, params);
+
+        yield put(prefetchPageSuccess({ cacheKey, data: invoiceList, meta: normMeta }));
+      } catch {
+        yield put(prefetchPageFailure());
+      } finally {
+        inFlightPrefetches.delete(cacheKey);
+      }
       return;
     }
 

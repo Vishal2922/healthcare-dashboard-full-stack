@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
-  TeamOutlined, UserOutlined, CheckCircleOutlined,
+  TeamOutlined, CheckCircleOutlined,
   StopOutlined, SwapOutlined, SafetyCertificateOutlined, CloseOutlined,
 } from '@ant-design/icons';
 import useStaff from '../../modules/staff/hooks/useStaff';
@@ -25,7 +25,6 @@ const RoleName      = styled.div`font-size:15px;font-weight:600;color:#0e1b2a;`;
 const RoleCount     = styled.div`font-size:12px;color:#718096;background:#f7f9fb;border:1px solid #e2e8f0;border-radius:99px;padding:2px 10px;`;
 const PermissionList = styled.div`display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;`;
 const PermTag       = styled.span`font-size:11px;font-weight:500;padding:2px 8px;border-radius:6px;background:#f0fff4;color:#276749;border:1px solid #c6f6d5;`;
-const SectionTitle  = styled.h2`font-size:16px;font-weight:600;color:#0e1b2a;margin:0 0 1rem;display:flex;align-items:center;gap:8px;`;
 const TableWrap     = styled.div`background:white;border-radius:14px;border:1.5px solid #e2e8f0;overflow:hidden;`;
 const Table         = styled.table`width:100%;border-collapse:collapse;`;
 const Th            = styled.th`text-align:left;padding:12px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#718096;background:#f7f9fb;border-bottom:1.5px solid #e2e8f0;`;

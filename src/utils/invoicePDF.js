@@ -117,10 +117,6 @@ export function downloadInvoicePDF(invoice, clinicInfo = {}) {
       <div class="notes-text">${escapeHtml(invoice.notes)}</div>
     </div>` : '';
 
-  const gstinLine = clinic.gstin
-    ? `<div>GSTIN: <strong>${escapeHtml(clinic.gstin)}</strong></div>`
-    : '';
-
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>

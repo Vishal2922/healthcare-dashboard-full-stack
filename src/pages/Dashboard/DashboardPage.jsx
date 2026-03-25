@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
-import styled, { keyframes, createGlobalStyle, useTheme } from 'styled-components';
+import styled, { keyframes, useTheme } from 'styled-components';
 import useAuth from '../../modules/auth/hooks/useAuth';
 import axiosClient from '../../services/axiosClient';
+import {
+  ResponsiveContainer,
+  PieChart, Pie, Cell as PieCell,
+  Tooltip as ChartTooltip,
+  LineChart, Line,
+  XAxis, YAxis, CartesianGrid,
+  BarChart, Bar,
+} from 'recharts';
 
 /* ── Animations ──────────────────────────────────────────────────────────────── */
 const rise = keyframes`
@@ -103,12 +111,6 @@ const GreetName = styled.h1`
   line-height: 1.15;
 `;
 
-const GreetSub = styled.p`
-  font-size: 13px;
-  color: rgba(255,255,255,0.45);
-  margin: 0;
-  font-weight: 300;
-`;
 
 const HeroRight = styled.div`
   display: flex;
@@ -285,17 +287,6 @@ const KpiNote = styled.div`
   gap: 4px;
 `;
 
-const KpiTrend = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 10px;
-  font-weight: 600;
-  color: ${({ $up, theme }) => $up ? theme.colors.primary : T.rose};
-  background: ${({ $up, theme }) => $up ? `${theme.colors.primary}1f` : T.roseL};
-  border-radius: 4px;
-  padding: 1px 5px;
-`;
 
 /* ── Featured metric card — large hero KPI ── */
 const HeroKpi = styled.div`
@@ -391,6 +382,19 @@ const TableGrid = styled.div`
   gap: 16px;
 
   @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (max-width: 740px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -563,6 +567,15 @@ function fmtDate(str) {
   return new Date(str).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
+function formatMonthYM(ym) {
+  // expects 'YYYY-MM'
+  if (!ym || typeof ym !== 'string') return '—';
+  const [yyyy, mm] = ym.split('-');
+  const date = new Date(Number(yyyy), Number(mm) - 1, 1);
+  if (Number.isNaN(date.getTime())) return ym;
+  return date.toLocaleDateString('en-IN', { month: 'short' });
+}
+
 function fmtTime(str) {
   if (!str) return '—';
   return new Date(str).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
@@ -571,20 +584,10 @@ function fmtTime(str) {
 function n(v) { return v ?? '—'; }
 
 /* ── Skeleton cards ── */
-function SkeletonKpis({ count = 4 }) {
-  return (
-    <KpiGrid>
-      {Array.from({ length: count }).map((_, i) => (
-        <KpiSkeleton key={i} />
-      ))}
-    </KpiGrid>
-  );
-}
 
 /* ── Main component ────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { user }                  = useAuth();
-  const role                      = user?.role;
   const sysTheme                  = useTheme();
   const [stats,   setStats]       = useState(null);
   const [loading, setLoading]     = useState(true);
@@ -610,6 +613,50 @@ export default function DashboardPage() {
   const recentAppointments  = stats?.recent_appointments  ?? [];
   const recentInvoices      = stats?.recent_invoices      ?? [];
   const recentPrescriptions = stats?.recent_prescriptions ?? [];
+
+  // ── Chart datasets (Admin billing + Patients roles) ─────────────────────────
+  const invoiceStatusBreakdown = Array.isArray(stats?.invoice_status_breakdown)
+    ? stats.invoice_status_breakdown
+    : [];
+  const revenueLast6Months = Array.isArray(stats?.revenue_last_6_months)
+    ? stats.revenue_last_6_months
+    : [];
+  const patientsCreatedLast6Months = Array.isArray(stats?.patients_created_last_6_months)
+    ? stats.patients_created_last_6_months
+    : [];
+
+  const hasInvoiceStatusBreakdown = invoiceStatusBreakdown.length > 0;
+  const hasRevenueTrend            = revenueLast6Months.length > 0;
+  const hasPatientsCreatedTrend  = patientsCreatedLast6Months.length > 0;
+
+  const invoiceStatusPieData = invoiceStatusBreakdown
+    .filter((d) => (d?.value ?? 0) > 0)
+    .map((d) => ({
+      key:   d?.key,
+      label: d?.label ?? d?.key,
+      value: d?.value ?? 0,
+    }));
+
+  const invoiceTotalForBadge = invoiceStatusPieData.reduce((sum, d) => sum + (d.value ?? 0), 0);
+
+  const invoiceStatusColorMap = {
+    paid: sysTheme?.colors?.primary || T.accent,
+    open: '#60a5fa',
+    overdue: T.rose,
+    partially_paid: '#f59e0b',
+    refunded: '#a78bfa',
+    cancelled: '#94a3b8',
+  };
+
+  const revenueChartData = revenueLast6Months.map((d) => ({
+    month:   formatMonthYM(d?.month),
+    revenue: d?.revenue ?? 0,
+  }));
+
+  const patientsChartData = patientsCreatedLast6Months.map((d) => ({
+    month: formatMonthYM(d?.month),
+    count: d?.count ?? 0,
+  }));
 
   // Build dynamic KPI cards based on available data
   const overviewKpis = [];
@@ -763,6 +810,171 @@ export default function DashboardPage() {
                   ))}
                 </KpiGrid>
               )}
+            </Section>
+          )}
+
+          {/* ── Clinic Overview Charts (Recharts) ───────────────────────── */}
+          {!error && !loading && (hasInvoiceStatusBreakdown || hasRevenueTrend || hasPatientsCreatedTrend) && (
+            <Section $delay="0.15s">
+              <SectionHead>
+                <SectionTitle>Clinic Overview</SectionTitle>
+                <SectionCount>Last 6 months</SectionCount>
+                <SectionRule />
+              </SectionHead>
+
+              <ChartsGrid>
+                {/* Invoices by status */}
+                <Panel>
+                  <PanelHead>
+                    <PanelTitle>
+                      <PanelIcon $bg={T.accentL}>🧾</PanelIcon>
+                      Invoices by Status
+                    </PanelTitle>
+                    <PanelBadge>{invoiceTotalForBadge || 0}</PanelBadge>
+                  </PanelHead>
+
+                  <div style={{ padding: 16, height: 260 }}>
+                    {hasInvoiceStatusBreakdown ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={invoiceStatusPieData}
+                            dataKey="value"
+                            nameKey="label"
+                            innerRadius={52}
+                            outerRadius={82}
+                            paddingAngle={3}
+                          >
+                            {invoiceStatusPieData.map((entry) => (
+                              <PieCell
+                                key={entry.key}
+                                fill={invoiceStatusColorMap[entry.key] || T.indigo}
+                              />
+                            ))}
+                          </Pie>
+                          <ChartTooltip
+                            formatter={(value, name) => [`${value} invoices`, name || '']}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <EmptyPanel>No invoice chart data</EmptyPanel>
+                    )}
+                    {hasInvoiceStatusBreakdown && (
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 12,
+                        marginTop: 12,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {(invoiceStatusBreakdown || []).map((d) => {
+                          const key = d?.key;
+                          const label = d?.label ?? key;
+                          const value = d?.value ?? 0;
+                          const fill = invoiceStatusColorMap[key] || T.indigo;
+                          return (
+                            <div
+                              key={key || label}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 12,
+                                color: '#374151',
+                              }}
+                            >
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: '50%',
+                                  background: fill,
+                                  border: '1px solid rgba(0,0,0,0.08)',
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <span style={{ fontWeight: 600 }}>{label}</span>
+                              <span style={{ color: '#6b7280' }}>({value})</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </Panel>
+
+                {/* Revenue trend */}
+                <Panel>
+                  <PanelHead>
+                    <PanelTitle>
+                      <PanelIcon $bg={T.skyL}>📈</PanelIcon>
+                      Monthly Revenue
+                    </PanelTitle>
+                    <PanelBadge>₹</PanelBadge>
+                  </PanelHead>
+
+                  <div style={{ padding: 16, height: 260 }}>
+                    {hasRevenueTrend ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={revenueChartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis tickFormatter={(v) => fmt(v)} />
+                          <ChartTooltip
+                            formatter={(value) => [fmt(value), 'Revenue']}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="revenue"
+                            stroke={sysTheme?.colors?.primary || T.accent}
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                            activeDot={{ r: 4 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <EmptyPanel>No revenue chart data</EmptyPanel>
+                    )}
+                  </div>
+                </Panel>
+
+                {/* Patients created trend */}
+                <Panel>
+                  <PanelHead>
+                    <PanelTitle>
+                      <PanelIcon $bg={T.indigoL}>👥</PanelIcon>
+                      Patients Created
+                    </PanelTitle>
+                    <PanelBadge>6 mo</PanelBadge>
+                  </PanelHead>
+
+                  <div style={{ padding: 16, height: 260 }}>
+                    {hasPatientsCreatedTrend ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={patientsChartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <ChartTooltip
+                            formatter={(value) => [`${value} patients`, 'Created']}
+                          />
+                          <Bar
+                            dataKey="count"
+                            fill={sysTheme?.colors?.primary || T.accent}
+                            radius={[6, 6, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <EmptyPanel>No patients trend data</EmptyPanel>
+                    )}
+                  </div>
+                </Panel>
+              </ChartsGrid>
             </Section>
           )}
 

@@ -215,7 +215,6 @@ function getThemeIcon(mode) {
   return themeIconMap[mode] || '🌤️';
 }
 
-export default function Header({ onMenuToggle }) {
 export default function Header({ onMenuToggle, hidden }) {
   const { user, logout } = useAuth();
   const {

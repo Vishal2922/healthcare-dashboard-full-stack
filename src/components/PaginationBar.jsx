@@ -132,8 +132,6 @@ export default function PaginationBar({
 }) {
   if (!total || lastPage <= 0) return null;
 
-  const pageRange = getPageRange ? getPageRange(5) : [];
-
   // ── Row range summary ─────────────────────────────────────────────────────
   const rangeStart = (currentPage - 1) * perPage + 1;
   const rangeEnd   = Math.min(currentPage * perPage, total);

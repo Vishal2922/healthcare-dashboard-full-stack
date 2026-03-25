@@ -119,7 +119,7 @@ export default function ChangePasswordForm() {
 
     setLoading(true);
     try {
-      const response = await axiosClient.post('/api/auth/change-password', {
+      const response = await axiosClient.post('/api/settings/change-password', {
         current_password: formData.current_password,
         new_password: formData.new_password,
       });

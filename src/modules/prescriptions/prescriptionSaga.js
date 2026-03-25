@@ -77,6 +77,7 @@ function buildParams(actionPayload, meta, filters) {
 // ── Fetch Prescriptions (cache-aware + paginated) ─────────────────────────────
 function* handleFetchPrescriptions(action) {
   try {
+    const isPrefetch = !!action.payload?._prefetch;
     const meta    = yield select(selectPrescriptionMeta);
     const filters = yield select(selectPrescriptionFilters);
     const params  = buildParams(action.payload, meta, filters);
@@ -87,8 +88,40 @@ function* handleFetchPrescriptions(action) {
     const reduxCache = yield select(selectPrescriptionPageCache);
     const cached = reduxCache[cacheKey];
     if (cached && !action.payload?.forceRefresh) {
+      // Prefetch must not overwrite the visible list.
+      if (isPrefetch) return;
+
       yield put(serveFromCache(cached));
       yield fork(prefetchNextPrescriptionPage, params, cached.meta);
+      return;
+    }
+
+    // ── Silent prefetch: fetch + store in pageCache only ─────────────────────
+    if (isPrefetch) {
+      if (inFlightPrefetches.has(cacheKey)) return;
+      inFlightPrefetches.add(cacheKey);
+
+      yield put(prefetchPageRequest());
+      try {
+        const response = yield call(fetchPrescriptionsAPI, params);
+
+        let list, normMeta;
+        if (Array.isArray(response)) {
+          list = response;
+          normMeta = { total: list.length, page: 1, per_page: params.per_page, last_page: 1 };
+        } else {
+          const payload       = response?.data ?? response;
+          list                = payload?.data ?? payload?.prescriptions ?? payload ?? [];
+          const rawPagination = payload?.pagination ?? payload?.meta ?? {};
+          normMeta            = normaliseMeta(rawPagination, params);
+        }
+
+        yield put(prefetchPageSuccess({ cacheKey, data: list, meta: normMeta }));
+      } catch (error) {
+        yield put(prefetchPageFailure());
+      } finally {
+        inFlightPrefetches.delete(cacheKey);
+      }
       return;
     }
 

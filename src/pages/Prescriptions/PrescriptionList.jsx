@@ -10,13 +10,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import styled, { useTheme } from 'styled-components';
 import {
   Table, Button, Input, Select, Tag, Space, Tooltip,
-  Alert, Typography, Row, Col, Card, Popconfirm, Statistic,
+  Alert, Typography, Card, Popconfirm,
 } from 'antd';
 import {
   MedicineBoxOutlined, PlusOutlined, SearchOutlined,
   CheckCircleOutlined, ClockCircleOutlined,
   ReloadOutlined, FilterOutlined, DownloadOutlined,
-  UserOutlined, WifiOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 
 import usePrescriptions from '../../modules/prescriptions/hooks/usePrescriptions';

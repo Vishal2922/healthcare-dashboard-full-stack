@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import styled, { useTheme } from 'styled-components';
 import {
   Drawer, Button, Space, Tag, Typography, Descriptions,
-  Table, Divider, Alert, Skeleton, Popconfirm, Row, Col, Badge,
+  Table, Divider, Alert, Skeleton, Popconfirm,
 } from 'antd';
 import {
   CheckCircleOutlined, FileTextOutlined, WarningOutlined,
@@ -113,7 +113,6 @@ export default function InvoiceDetailDrawer({
     downloadInvoicePDF(invoice, { themeColor: theme.colors.primary });
   };
 
-  const isPaid      = invoice?.status === 'paid';
   const isPending   = invoice?.status === 'unpaid' || invoice?.status === 'pending' || invoice?.status === 'overdue';
   const isCancelled = invoice?.status === 'cancelled';
 

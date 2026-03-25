@@ -30,9 +30,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import pageCache from '../services/pageCacheManager';
 
 const DEFAULT_DEBOUNCE_MS = 200;
-const DEFAULT_PER_PAGE    = 10;
+const DEFAULT_PER_PAGE    = 5;
 
 export default function usePrefetchPagination({
   fetchAction,
@@ -42,7 +43,7 @@ export default function usePrefetchPagination({
   prefetchAction,
   listLoading = false,
   debounceMs  = DEFAULT_DEBOUNCE_MS,
-  perPageOptions = [10, 20, 50],
+  perPageOptions = [5],
   cacheKeyPrefix = '',
   filtersSelector,
 }) {
@@ -69,17 +70,12 @@ export default function usePrefetchPagination({
     setOptimisticPage(currentPage);
   }, [currentPage]);
 
-  // ── Build cache key for a given page ────────────────────────────────────────
+  // ── Build cache key for a given page (must match pageCacheManager.makeKey) ──
   const buildCacheKey = useCallback(
     (page) => {
       if (!cacheKeyPrefix) return null;
       const params = { page, per_page: perPage, ...filters };
-      // Stable JSON key — same format as pageCacheManager.makeKey
-      const sorted = Object.keys(params).sort().reduce((o, k) => {
-        if (params[k] !== undefined && params[k] !== null && params[k] !== '') o[k] = params[k];
-        return o;
-      }, {});
-      return `${cacheKeyPrefix}:${JSON.stringify(sorted)}`;
+      return pageCache.makeKey(cacheKeyPrefix, params);
     },
     [cacheKeyPrefix, perPage, filters]
   );
@@ -214,9 +210,13 @@ export default function usePrefetchPagination({
 
   // Cleanup debounce on unmount
   useEffect(() => {
+    // Capture ref values to keep React Hooks lint happy and ensure cleanup
+    // operates on the same Set instance.
+    const debounceRefCurrent = debounceRef;
+    const inFlightSet = inFlightRef.current;
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      inFlightRef.current.clear();
+      if (debounceRefCurrent.current) clearTimeout(debounceRefCurrent.current);
+      inFlightSet.clear();
     };
   }, []);
 

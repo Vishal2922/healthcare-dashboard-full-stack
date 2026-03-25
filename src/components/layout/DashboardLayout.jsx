@@ -17,24 +17,7 @@ import OfflineBanner     from '../OfflineBanner';
 import OfflineQueueDrawer from '../OfflineQueueDrawer';
 import useOfflineQueue from '../../hooks/useOfflineQueue';
 
-const Wrapper = styled.div`
-  min-height: 100vh;
-  background: ${({ theme }) => theme.colors.background || '#f7f5f0'};
-  font-family: 'DM Sans', sans-serif;
-  display: flex;
-  flex-direction: column;
-`;
 
-const Main = styled.main`
-  margin-top: ${HEADER_HEIGHT}px;
-  margin-left: ${({ $sidebarOpen }) => ($sidebarOpen ? `${SIDEBAR_WIDTH}px` : '0')};
-  transition: margin-left 0.25s ease;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: ${({ theme }) => theme.colors.background || '#f7f5f0'};
-  min-height: calc(100vh - ${HEADER_HEIGHT}px);
-`;
 export default function DashboardLayout() {
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen]         = useState(true);

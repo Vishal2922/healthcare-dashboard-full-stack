@@ -100,9 +100,7 @@ export default function UserManagement() {
   const { can } = usePermission();
 
   // ── RBAC flags ─────────────────────────────────────────────────────────────
-  const canCreate = can('users', 'create');
-  const canEdit   = can('users', 'edit');
-  const canDelete = can('users', 'delete');
+  // RBAC checks used inline for specific actions/buttons.
 
   const [search,       setSearch]       = useState('');
   const [statusFilter, setStatusFilter] = useState('');

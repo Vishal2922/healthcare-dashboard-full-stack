@@ -30,7 +30,7 @@ const initialState = {
   meta: {
     total:    0,
     page:     1,
-    per_page: 10,
+    per_page: 5,
     last_page: 1,
   },
 
@@ -98,6 +98,12 @@ const billingSlice = createSlice({
 
     // ── Invoice List ──────────────────────────────────────────────────────────
     fetchInvoicesRequest: (state, action) => {
+      // `_prefetch` is background pagination: never show the main list loader.
+      if (action.payload?._prefetch) {
+        state.prefetching = true;
+        return;
+      }
+
       state.listLoading = true;
       state.error       = null;
       if (action.payload?.filters) {
