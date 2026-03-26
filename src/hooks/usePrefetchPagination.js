@@ -53,7 +53,7 @@ export default function usePrefetchPagination({
   const filters    = useSelector(filtersSelector ?? (() => ({})));
 
   const currentPage = meta?.page      ?? 1;
-  const lastPage    = meta?.last_page  ?? 1;
+  const lastPage    = meta?.last_page ?? meta?.total_pages ?? 1;
   const total       = meta?.total      ?? 0;
   const perPage     = meta?.per_page   ?? DEFAULT_PER_PAGE;
 

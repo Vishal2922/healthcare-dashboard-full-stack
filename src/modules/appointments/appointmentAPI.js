@@ -1,6 +1,6 @@
 import axiosClient from '../../services/axiosClient';
 
-export const fetchAppointmentsAPI = async ({ page = 1, perPage = 15, status } = {}) => {
+export const fetchAppointmentsAPI = async ({ page = 1, perPage = 5, status, _prefetch } = {}) => {
   const params = { page, per_page: perPage };
   if (status) params.status = status;
   const response = await axiosClient.get('/api/appointments', { params });

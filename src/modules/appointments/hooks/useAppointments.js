@@ -11,16 +11,15 @@ import {
   setSelectedAppointment,
   clearAppointmentError,
   setFilterStatus,
-  serveFromPrefetchCache,
 } from '../appointmentSlice';
 
 export default function useAppointments() {
   const dispatch = useDispatch();
 
   const {
-    list, pagination, selectedAppointment,
+    list, meta, selectedAppointment,
     loading, rowLoading, error, filters,
-    prefetchedPages, offlineQueue, isOnline,
+    pageCache, prefetching, offlineQueue, isOnline,
     isDrainingQueue, conflictCheck,
     bookingLoading, bookingError, bookingSuccess,
   } = useSelector((state) => state.appointments);
@@ -28,19 +27,6 @@ export default function useAppointments() {
   const loadAppointments = useCallback(
     (overrides = {}) => dispatch(fetchAppointmentsRequest(overrides)),
     [dispatch]
-  );
-
-  const goToPage = useCallback(
-    (page) => {
-      if (prefetchedPages[page]) {
-        // Instant serve from cache, then revalidate in background
-        dispatch(serveFromPrefetchCache({ page }));
-        dispatch(fetchAppointmentsRequest({ page }));
-      } else {
-        dispatch(fetchAppointmentsRequest({ page }));
-      }
-    },
-    [dispatch, prefetchedPages]
   );
 
   const bookAppointment = useCallback(
@@ -98,15 +84,15 @@ export default function useAppointments() {
 
   return {
     // State
-    list, pagination, selectedAppointment,
+    list, meta, selectedAppointment,
     loading, rowLoading, error, filters,
-    prefetchedPages,
+    pageCache, prefetching,
     offlineQueue, offlineQueueCount: offlineQueue.length,
     isOnline, isDrainingQueue,
     conflictCheck,
     bookingLoading, bookingError, bookingSuccess,
     // Actions
-    loadAppointments, goToPage,
+    loadAppointments,
     bookAppointment, updateStatus, cancelAppointment,
     checkSlotConflict, selectAppointment,
     clearError, resetBooking, resetConflict, filterByStatus,

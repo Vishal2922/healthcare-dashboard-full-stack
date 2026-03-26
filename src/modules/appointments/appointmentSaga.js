@@ -13,16 +13,18 @@ import {
 
 import {
   fetchAppointmentsRequest, fetchAppointmentsSuccess, fetchAppointmentsFailure,
-  prefetchPageRequest, prefetchPageSuccess,
+  prefetchPageRequest, prefetchPageSuccess, prefetchPageFailure,
   bookAppointmentRequest, bookAppointmentSuccess, bookAppointmentFailure,
   updateStatusRequest, updateStatusSuccess, updateStatusFailure,
   cancelAppointmentRequest, cancelAppointmentSuccess, cancelAppointmentFailure,
   checkSlotConflictRequest, checkSlotConflictSuccess, checkSlotConflictFailure,
   setOnlineStatus, enqueueOfflineAction, setDrainingQueue, dequeueOfflineAction,
-  invalidatePrefetchCache,
+  invalidatePageCache,
 } from './appointmentSlice';
 
-// Inline UUID — no external dependency needed
+import pageCache from '../../services/pageCacheManager';
+
+// Inline UUID
 const uuidv4 = () =>
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -31,51 +33,120 @@ const uuidv4 = () =>
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
 const selectFilters         = (state) => state.appointments.filters;
-const selectPrefetchedPages = (state) => state.appointments.prefetchedPages;
 const selectOfflineQueue    = (state) => state.appointments.offlineQueue;
 const selectIsOnline        = (state) => state.appointments.isOnline;
+const selectMeta            = (state) => state.appointments.meta;
 
-// ── 1. Fetch Appointments ─────────────────────────────────────────────────────
-function* handleFetchAppointments() {
+// Track in-flight prefetch pages to avoid duplicate API calls
+const inFlightPrefetch = new Set();
+const PREFETCH_DELAY_MS = 300;
+
+// ── 1. Fetch Appointments (Normal & Prefetch) ─────────────────────────────────
+function* handleFetchAppointments(action) {
   try {
     const filters = yield select(selectFilters);
-    const data = yield call(fetchAppointmentsAPI, {
-      page:    filters.page,
-      perPage: filters.perPage,
-      status:  filters.status || undefined,
-    });
-    yield put(fetchAppointmentsSuccess(data));
+    const overrides = action.payload || {};
+    const apiParams = { ...filters, ...overrides };
+    
+    // Extract _prefetch flag
+    const isPrefetch = !!apiParams._prefetch;
+    delete apiParams._prefetch;
 
-    // Auto-prefetch next page
-    const { total_pages, page } = data.pagination;
-    if (page < total_pages) {
-      yield fork(handlePrefetchPage, page + 1);
+    const cacheKey = pageCache.makeKey('appointments', {
+      page: apiParams.page || 1,
+      per_page: apiParams.perPage || apiParams.per_page || 5,
+      ...filters, 
+      ...overrides,
+    });
+
+    if (isPrefetch) {
+      if (inFlightPrefetch.has(cacheKey)) return;
+      inFlightPrefetch.add(cacheKey);
+
+      yield put(prefetchPageRequest());
+      const data = yield call(fetchAppointmentsAPI, apiParams);
+      
+      const normMeta = data.pagination || data.meta || {
+        total: data.appointments?.length || 0,
+        page: apiParams.page || 1,
+        per_page: apiParams.perPage || apiParams.per_page || 5,
+        total_pages: 1,
+      };
+
+      // Store in global page cache
+      pageCache.set(cacheKey, { data: data.appointments || data, meta: normMeta });
+
+      yield put(prefetchPageSuccess({ cacheKey, data: data.appointments || data, meta: normMeta }));
+      inFlightPrefetch.delete(cacheKey);
+      return;
     }
+
+    // Normal fetch
+    const data = yield call(fetchAppointmentsAPI, apiParams);
+    
+    const normMeta = data.pagination || data.meta || {
+      total: data.appointments?.length || 0,
+      page: apiParams.page || 1,
+      per_page: apiParams.perPage || apiParams.per_page || 5,
+      total_pages: 1,
+    };
+
+    // Store in global page cache
+    pageCache.set(cacheKey, { data: data.appointments || data, meta: normMeta });
+
+    yield put(fetchAppointmentsSuccess({ appointments: data.appointments || data, pagination: normMeta, cacheKey }));
+
+    // Automatically prefetch the NEXT page if not on the last page
+    yield fork(prefetchNextPage, apiParams, normMeta);
+
   } catch (error) {
-    yield put(fetchAppointmentsFailure(
-      error.response?.data?.message || error.message || 'Failed to load appointments.'
-    ));
+    if (action.payload?._prefetch) {
+      yield put(prefetchPageFailure());
+      const cacheKey = pageCache.makeKey('appointments', action.payload);
+      inFlightPrefetch.delete(cacheKey);
+    } else {
+      yield put(fetchAppointmentsFailure(
+        error.response?.data?.message || error.message || 'Failed to load appointments.'
+      ));
+    }
   }
 }
 
-// ── 2. Prefetch (background, silent) ─────────────────────────────────────────
-function* handlePrefetchPage(targetPage) {
+// ── 2. Automatic Prefetch Worker ─────────────────────────────────────────────
+function* prefetchNextPage(currentParams, currentMeta) {
+  yield delay(PREFETCH_DELAY_MS);
+
+  const page = Number(currentMeta.page || 1);
+  const totalPages = Number(currentMeta.total_pages || currentMeta.last_page || 1);
+
+  if (page >= totalPages) return; // already on last page
+
+  const nextParams = { ...currentParams, page: page + 1 };
+  
+  const cacheKey = pageCache.makeKey('appointments', {
+    page: nextParams.page,
+    per_page: nextParams.perPage || nextParams.per_page || 5,
+    ...nextParams
+  });
+
+  // Skip if already cached or in-flight
+  if (pageCache.has(cacheKey) || inFlightPrefetch.has(cacheKey)) return;
+
+  inFlightPrefetch.add(cacheKey);
+
   try {
-    const cached = yield select(selectPrefetchedPages);
-    if (cached[targetPage]) return;
+    yield put(prefetchPageRequest());
+    const data = yield call(fetchAppointmentsAPI, nextParams);
+    
+    const normMeta = data.pagination || data.meta || { ...currentMeta, page: nextParams.page };
+    const rawAppointments = data.appointments || data;
 
-    const filters = yield select(selectFilters);
-    yield put(prefetchPageRequest({ page: targetPage }));
-
-    const data = yield call(fetchAppointmentsAPI, {
-      page:    targetPage,
-      perPage: filters.perPage,
-      status:  filters.status || undefined,
-    });
-
-    yield put(prefetchPageSuccess({ page: targetPage, appointments: data.appointments }));
-  } catch (_) {
-    // Silent — user gets a real fetch on navigation if cache is missing
+    pageCache.set(cacheKey, { data: rawAppointments, meta: normMeta });
+    yield put(prefetchPageSuccess({ cacheKey, data: rawAppointments, meta: normMeta }));
+  } catch (e) {
+    yield put(prefetchPageFailure());
+  } finally {
+    inFlightPrefetch.delete(cacheKey);
   }
 }
 
@@ -98,8 +169,10 @@ function* handleBookAppointment(action) {
 
   try {
     const appointment = yield call(bookAppointmentAPI, action.payload);
+    pageCache.invalidate('appointments');
     yield put(bookAppointmentSuccess(appointment));
-    yield put(invalidatePrefetchCache());
+    
+    // Refresh page 1 after booking
     yield put(fetchAppointmentsRequest({ page: 1 }));
   } catch (error) {
     yield put(bookAppointmentFailure(
@@ -129,6 +202,7 @@ function* handleUpdateStatus(action) {
 
   try {
     const updated = yield call(updateAppointmentStatusAPI, id, status);
+    pageCache.invalidate('appointments');
     yield put(updateStatusSuccess(updated));
   } catch (error) {
     yield put(updateStatusFailure({
@@ -159,6 +233,7 @@ function* handleCancelAppointment(action) {
 
   try {
     yield call(cancelAppointmentAPI, id);
+    pageCache.invalidate('appointments');
     yield put(cancelAppointmentSuccess({ id }));
   } catch (error) {
     yield put(cancelAppointmentFailure({
@@ -180,11 +255,12 @@ function* handleCheckSlotConflict(action) {
 
   try {
     const data = yield call(fetchAppointmentsAPI, { page: 1, perPage: 50, status: 'scheduled' });
+    const rawAppointments = data.appointments || data;
 
     const requestedTime = new Date(appointment_time).getTime();
     const SLOT_MS = 30 * 60 * 1000; // 30-minute window
 
-    const hasConflict = data.appointments.some((appt) => {
+    const hasConflict = rawAppointments.some((appt) => {
       if (String(appt.doctor_id) !== String(doctor_id)) return false;
       return Math.abs(new Date(appt.appointment_time).getTime() - requestedTime) < SLOT_MS;
     });
@@ -232,8 +308,11 @@ function* drainOfflineQueue() {
   }
 
   yield put(setDrainingQueue(false));
-  yield put(invalidatePrefetchCache());
-  yield put(fetchAppointmentsRequest({ page: 1 }));
+  pageCache.invalidate('appointments');
+  yield put(invalidatePageCache());
+  
+  const currentMeta = yield select(selectMeta);
+  yield put(fetchAppointmentsRequest({ page: currentMeta.page || 1 }));
 }
 
 // ── 8. Network Status Watcher ─────────────────────────────────────────────────

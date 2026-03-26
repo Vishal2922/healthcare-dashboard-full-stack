@@ -1,13 +1,23 @@
+/**
+ * appointmentSlice.js  (UPDATED — Prefetch Pagination with pageCache)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Now uses the same pageCache pattern as patientSlice / prescriptionSlice
+ * for instant page navigation and background prefetch of next pages.
+ */
+
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   list: [],
-  pagination: {
-    total: 0,
-    page: 1,
-    per_page: 15,
+
+  // ── Pagination meta (mirrors backend response) ──────────────────────────
+  meta: {
+    total:       0,
+    page:        1,
+    per_page:    5,
     total_pages: 0,
   },
+
   selectedAppointment: null,
 
   loading: false,
@@ -16,11 +26,11 @@ const initialState = {
 
   filters: {
     status: '',
-    page: 1,
-    perPage: 15,
   },
 
-  prefetchedPages: {},
+  // ── Page cache (cacheKey → { data, meta }) ──────────────────────────────
+  pageCache:   {},
+  prefetching: false,    // true while a background prefetch is running
 
   offlineQueue: [],
   isOnline: true,
@@ -44,44 +54,64 @@ const appointmentSlice = createSlice({
 
     // ── Fetch List ──────────────────────────────────────────
     fetchAppointmentsRequest: (state, action) => {
+      // `_prefetch` is background pagination: never show the main list loader.
+      if (action.payload?._prefetch) {
+        state.prefetching = true;
+        return;
+      }
+
       state.loading = true;
       state.error = null;
       if (action.payload) {
-        state.filters = { ...state.filters, ...action.payload };
+        const { _prefetch, ...rest } = action.payload;
+        if (rest.status !== undefined) state.filters.status = rest.status;
       }
     },
     fetchAppointmentsSuccess: (state, action) => {
-      const { appointments, pagination } = action.payload;
+      const { appointments, pagination, cacheKey } = action.payload;
       state.list = appointments;
-      state.pagination = pagination;
+      state.meta = pagination;
       state.loading = false;
+      state.prefetching = false;
       state.error = null;
-      state.prefetchedPages[pagination.page] = appointments;
+
+      // Store in page cache
+      if (cacheKey) {
+        state.pageCache[cacheKey] = { data: appointments, meta: pagination };
+      }
     },
     fetchAppointmentsFailure: (state, action) => {
       state.loading = false;
+      state.prefetching = false;
       state.error = action.payload;
     },
 
-    // ── Prefetch ────────────────────────────────────────────
+    // ── Serve from Cache (instant navigation) ────────────────
+    serveFromCache: (state, action) => {
+      const { data, meta } = action.payload;
+      state.list    = data;
+      state.meta    = meta;
+      state.loading = false;
+    },
+
+    // ── Prefetch Next Page ───────────────────────────────────
     prefetchPageRequest: (state) => {
-      // silent — no loading state change
+      state.prefetching = true;
     },
     prefetchPageSuccess: (state, action) => {
-      const { page, appointments } = action.payload;
-      state.prefetchedPages[page] = appointments;
-    },
-    serveFromPrefetchCache: (state, action) => {
-      const { page } = action.payload;
-      const cached = state.prefetchedPages[page];
-      if (cached) {
-        state.list = cached;
-        state.filters.page = page;
-        state.pagination = { ...state.pagination, page };
+      const { cacheKey, data, meta } = action.payload;
+      state.prefetching = false;
+      if (cacheKey) {
+        state.pageCache[cacheKey] = { data, meta };
       }
     },
-    invalidatePrefetchCache: (state) => {
-      state.prefetchedPages = {};
+    prefetchPageFailure: (state) => {
+      state.prefetching = false;
+    },
+
+    // ── Invalidate cache (after mutations) ───────────────────
+    invalidatePageCache: (state) => {
+      state.pageCache = {};
     },
 
     // ── Book Appointment ────────────────────────────────────
@@ -95,7 +125,7 @@ const appointmentSlice = createSlice({
       state.bookingSuccess = true;
       state.bookingError = null;
       state.list = [action.payload, ...state.list];
-      state.prefetchedPages = {};
+      state.pageCache = {};
       state.conflictCheck = { checking: false, isAvailable: null, checkedSlot: null };
     },
     bookAppointmentFailure: (state, action) => {
@@ -119,7 +149,7 @@ const appointmentSlice = createSlice({
       state.rowLoading[updated.id] = false;
       state.list = state.list.map((a) => a.id === updated.id ? updated : a);
       if (state.selectedAppointment?.id === updated.id) state.selectedAppointment = updated;
-      state.prefetchedPages = {};
+      state.pageCache = {};
     },
     updateStatusFailure: (state, action) => {
       const { id, message } = action.payload;
@@ -136,7 +166,7 @@ const appointmentSlice = createSlice({
       const { id } = action.payload;
       state.rowLoading[id] = false;
       state.list = state.list.map((a) => a.id === id ? { ...a, status: 'cancelled' } : a);
-      state.prefetchedPages = {};
+      state.pageCache = {};
     },
     cancelAppointmentFailure: (state, action) => {
       const { id, message } = action.payload;
@@ -193,15 +223,15 @@ const appointmentSlice = createSlice({
     },
     setFilterStatus: (state, action) => {
       state.filters.status = action.payload;
-      state.filters.page = 1;
-      state.prefetchedPages = {};
+      state.pageCache = {};
     },
   },
 });
 
 export const {
   fetchAppointmentsRequest, fetchAppointmentsSuccess, fetchAppointmentsFailure,
-  prefetchPageRequest, prefetchPageSuccess, serveFromPrefetchCache, invalidatePrefetchCache,
+  serveFromCache, prefetchPageRequest, prefetchPageSuccess, prefetchPageFailure,
+  invalidatePageCache,
   bookAppointmentRequest, bookAppointmentSuccess, bookAppointmentFailure, resetBookingState,
   updateStatusRequest, updateStatusSuccess, updateStatusFailure,
   cancelAppointmentRequest, cancelAppointmentSuccess, cancelAppointmentFailure,
@@ -209,5 +239,14 @@ export const {
   setOnlineStatus, enqueueOfflineAction, setDrainingQueue, dequeueOfflineAction, clearOfflineQueue,
   setSelectedAppointment, clearAppointmentError, setFilterStatus,
 } = appointmentSlice.actions;
+
+// ── Selectors ────────────────────────────────────────────────────────────────
+export const selectAppointmentList        = (s) => s.appointments.list;
+export const selectAppointmentMeta        = (s) => s.appointments.meta;
+export const selectAppointmentFilters     = (s) => s.appointments.filters;
+export const selectAppointmentLoading     = (s) => s.appointments.loading;
+export const selectAppointmentPageCache   = (s) => s.appointments.pageCache;
+export const selectAppointmentPrefetching = (s) => s.appointments.prefetching;
+export const selectAppointmentError       = (s) => s.appointments.error;
 
 export default appointmentSlice.reducer;

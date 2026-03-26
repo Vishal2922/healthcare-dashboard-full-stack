@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import styled, { keyframes } from 'styled-components';
 import {
   UserAddOutlined, SearchOutlined, EditOutlined,
@@ -346,7 +347,7 @@ export default function UserManagement() {
           Step 1: POST /api/auth/register  (username, email, password, full_name, role_id)
           Step 2: POST /api/staff          (user_id from step 1 + dept, hire_date, etc.)
       ══════════════════════════════════════════════════════════════════════ */}
-      {modal === 'create' && (
+      {modal === 'create' && createPortal(
         <Overlay onClick={closeModal}>
           <ModalCard onClick={e => e.stopPropagation()}>
             <ModalTitle>
@@ -495,11 +496,12 @@ export default function UserManagement() {
               </ModalFooter>
             </form>
           </ModalCard>
-        </Overlay>
+        </Overlay>,
+        document.body
       )}
 
       {/* ── EDIT MODAL ── */}
-      {modal === 'edit' && (
+      {modal === 'edit' && createPortal(
         <Overlay onClick={closeModal}>
           <ModalCard onClick={e => e.stopPropagation()}>
             <ModalTitle>
@@ -574,11 +576,12 @@ export default function UserManagement() {
               </ModalFooter>
             </form>
           </ModalCard>
-        </Overlay>
+        </Overlay>,
+        document.body
       )}
 
       {/* ── DELETE MODAL ── */}
-      {modal === 'delete' && (
+      {modal === 'delete' && createPortal(
         <Overlay onClick={closeModal}>
           <ModalCard onClick={e => e.stopPropagation()}>
             <ModalTitle>
@@ -600,7 +603,8 @@ export default function UserManagement() {
               </DangerBtn>
             </ModalFooter>
           </ModalCard>
-        </Overlay>
+        </Overlay>,
+        document.body
       )}
 
     </Page>

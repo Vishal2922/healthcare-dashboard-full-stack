@@ -1,20 +1,48 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useTheme } from 'styled-components';
+
 import useAppointments from '../../modules/appointments/hooks/useAppointments';
 import usePatients from '../../modules/patients/hooks/usePatients';
 import useUsers from '../../modules/users/hooks/useUsers';
+import usePermission from '../../hooks/usePermission';
+import usePrefetchPagination from '../../hooks/usePrefetchPagination';
+
 import AppointmentForm from '../../components/forms/AppointmentForm';
 import AppointmentNotesDrawer from '../../components/communication/AppointmentNotesDrawer';
-import { useTheme } from 'styled-components';
-import usePermission from '../../hooks/usePermission';
+import PaginationBar from '../../components/PaginationBar';
+
+import {
+  fetchAppointmentsRequest,
+  serveFromCache,
+  selectAppointmentMeta,
+  selectAppointmentPageCache,
+  selectAppointmentFilters,
+  selectAppointmentPrefetching,
+} from '../../modules/appointments/appointmentSlice';
 
 export default function AppointmentList() {
+  const dispatch = useDispatch();
+  const prefetching = useSelector(selectAppointmentPrefetching);
+
   const {
-    list, pagination, loading, error, filters,
+    list, meta, loading, error, filters,
     isOnline, offlineQueue, offlineQueueCount, isDrainingQueue,
-    loadAppointments, goToPage, updateStatus, cancelAppointment,
+    loadAppointments, updateStatus, cancelAppointment,
     filterByStatus, isRowLoading, clearError,
     bookingSuccess, resetBooking,
   } = useAppointments();
+
+  const paginationInfo = usePrefetchPagination({
+    fetchAction:          fetchAppointmentsRequest,
+    metaSelector:         selectAppointmentMeta,
+    pageCacheSelector:    selectAppointmentPageCache,
+    serveFromCacheAction: serveFromCache,
+    listLoading:          loading || false,
+    debounceMs:           200,
+    cacheKeyPrefix:       'appointments',
+    filtersSelector:      selectAppointmentFilters,
+  });
 
   const { patientList, fetchPatients } = usePatients();
   const { allUsers, fetchAllUsers } = useUsers();
@@ -90,26 +118,6 @@ export default function AppointmentList() {
       }}>
         {status}
       </span>
-    );
-  };
-
-  const renderPagination = () => {
-    const { page, total_pages } = pagination;
-    if (total_pages <= 1) return null;
-    const pages = [];
-    for (let i = Math.max(1, page - 2); i <= Math.min(total_pages, page + 2); i++) pages.push(i);
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 20, flexWrap: 'wrap' }}>
-        <button onClick={() => goToPage(page - 1)} disabled={page === 1 || loading} style={S.pageBtn}>‹ Prev</button>
-        {pages.map((p) => (
-          <button key={p} onClick={() => goToPage(p)} disabled={loading}
-            style={{ ...S.pageBtn, ...(p === page ? S.activePage : {}) }}>{p}</button>
-        ))}
-        <button onClick={() => goToPage(page + 1)} disabled={page === total_pages || loading} style={S.pageBtn}>Next ›</button>
-        <span style={{ fontSize: 12, color: '#a0aec0', marginLeft: 8 }}>
-          Page {page} of {total_pages} · {pagination.total} total
-        </span>
-      </div>
     );
   };
 
@@ -288,7 +296,13 @@ export default function AppointmentList() {
         )}
       </div>
 
-      {renderPagination()}
+      {/* Prefetch pagination bar */}
+      <div style={{ padding: '8px 16px', background: tableBg, borderRadius: '0 0 12px 12px', borderTop: `1px solid ${borderColor}` }}>
+        <PaginationBar
+          {...paginationInfo}
+          isPrefetching={prefetching}
+        />
+      </div>
 
       {/* ── Book Appointment Modal ───────────────────────────────────────────── */}
       {canCreate && showBookModal && (
