@@ -135,6 +135,21 @@ const notificationSlice = createSlice({
       }
     },
 
+    // ── Broadcast Single Notification ──────────────────────────────────────────
+    broadcastRequest: (state) => {
+      state.loading = true;
+      state.error = null;
+      state.successMessage = null;
+    },
+    broadcastSuccess: (state, action) => {
+      state.loading = false;
+      state.successMessage = 'Broadcast sent successfully.';
+    },
+    broadcastFailure: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
+
     // ── Set unread badge count independently (e.g. from header poll) ────────
     setUnreadCount: (state, action) => {
       state.unreadCount = action.payload;
@@ -162,6 +177,9 @@ export const {
   deleteNotificationFailure,
   addNotification,
   setUnreadCount,
+  broadcastRequest,
+  broadcastSuccess,
+  broadcastFailure,
   clearSuccess,
   clearError,
   resetNotifications,

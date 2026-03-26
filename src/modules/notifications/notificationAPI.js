@@ -57,3 +57,9 @@ export const fetchUnreadCountAPI = async () => {
   return response.data;
   // shape: { status, data: { unread_count: N } }
 };
+
+// ─── Broadcast Announcement ──────────────────────────────────────────────────
+export const broadcastNotificationAPI = async (payload) => {
+  const response = await axiosClient.post('/api/notifications/broadcast', payload);
+  return response.data;
+};

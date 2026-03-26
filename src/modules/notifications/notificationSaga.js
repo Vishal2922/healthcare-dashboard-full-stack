@@ -15,6 +15,7 @@ import {
   markAllAsReadAPI,
   deleteNotificationAPI,
   fetchUnreadCountAPI,
+  broadcastNotificationAPI,
 } from './notificationAPI';
 
 import {
@@ -31,6 +32,9 @@ import {
   deleteNotificationSuccess,
   deleteNotificationFailure,
   setUnreadCount,
+  broadcastRequest,
+  broadcastSuccess,
+  broadcastFailure,
 } from './notificationSlice';
 
 // Poll for unread badge every 60 seconds (configurable)
@@ -122,6 +126,20 @@ function* handleDeleteNotification(action) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// 4b. BROADCAST SYSTEM NOTIFICATION
+//     POST /api/notifications/broadcast
+// ════════════════════════════════════════════════════════════════════════════
+function* handleBroadcast(action) {
+  try {
+    const payload = action.payload; // { title, message }
+    yield call(broadcastNotificationAPI, payload);
+    yield put(broadcastSuccess());
+  } catch (error) {
+    yield put(broadcastFailure(errMsg(error, 'Failed to send broadcast.')));
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // 5. UNREAD COUNT POLLER (background fork)
 //    Silently polls GET /api/notifications/unread-count every 60 s.
 //    Updates the badge in the Header without re-fetching the full list.
@@ -170,6 +188,7 @@ export default function* notificationSaga() {
     takeEvery(markAsReadRequest.type,           handleMarkAsRead),
     takeLatest(markAllAsReadRequest.type,       handleMarkAllAsRead),
     takeEvery(deleteNotificationRequest.type,   handleDeleteNotification),
+    takeLatest(broadcastRequest.type,           handleBroadcast),
     // Background unread badge poller — never cancels
     fork(watchUnreadCount),
   ]);

@@ -1,4 +1,5 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import styled, { keyframes } from 'styled-components';
 import {
   CheckOutlined,
@@ -6,7 +7,11 @@ import {
   DeleteOutlined,
   BellOutlined,
   ClockCircleOutlined,
+  SoundOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
+import { useDispatch } from 'react-redux';
+import { broadcastRequest } from '../../modules/notifications/notificationSlice';
 
 /* ═══════════════════════════════════════════════════════════════
    NotificationDropdown — absolute-positioned under the bell icon.
@@ -171,6 +176,76 @@ const TypeBadge = styled.span`
                                     '#276749'};
 `;
 
+const BroadcastBtn = styled.button`
+  background: ${({ theme }) => theme?.colors?.primary || '#3182ce'};
+  color: #fff; border: none;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px; margin: 0;
+  cursor: pointer; transition: opacity 0.15s;
+  &:hover { opacity: 0.9; }
+`;
+
+/* ─── Broadcast Modal Overlay ─────── */
+const ModalOverlay = styled.div`
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(3px);
+  z-index: 400; display: flex;
+  align-items: center; justify-content: center;
+  animation: ${fadeIn} 0.2s ease;
+`;
+
+const ModalCard = styled.div`
+  background: ${({ theme }) => theme?.colors?.surface || '#fff'};
+  width: 90%; max-width: 440px;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+`;
+
+const ModalHead = styled.div`
+  padding: 16px 20px;
+  border-bottom: 1px solid ${({ theme }) => theme?.colors?.border || '#f0f0f0'};
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: 700; font-size: 16px;
+  color: ${({ theme }) => theme?.colors?.text || '#1a202c'};
+`;
+
+const ModalBody = styled.div`
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+`;
+
+const InputGroup = styled.div`
+  display: flex; flex-direction: column; gap: 6px;
+  label { font-size: 13px; font-weight: 600; color: ${({ theme }) => theme?.colors?.textSecondary || '#4a5568'}; }
+  input, textarea {
+    padding: 10px 12px; border-radius: 6px;
+    border: 1px solid ${({ theme }) => theme?.colors?.border || '#e2e8f0'};
+    background: ${({ theme }) => theme?.colors?.background || '#fff'};
+    color: ${({ theme }) => theme?.colors?.text || '#1a202c'};
+    font-size: 14px; font-family: 'DM Sans', sans-serif;
+    outline: none; transition: border 0.15s;
+    &:focus { border-color: ${({ theme }) => theme?.colors?.primary || '#3182ce'}; }
+  }
+  textarea { resize: vertical; min-height: 100px; }
+`;
+
+const ModalFoot = styled.div`
+  padding: 16px 20px;
+  background: ${({ theme }) => theme?.colors?.background || '#f7fafc'};
+  border-top: 1px solid ${({ theme }) => theme?.colors?.border || '#f0f0f0'};
+  display: flex; justify-content: flex-end; gap: 12px;
+  button {
+    padding: 8px 16px; border-radius: 6px;
+    font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+  }
+  .cancel { background: transparent; color: #4a5568; &:hover { background: #e2e8f0; } }
+  .send { background: ${({ theme }) => theme?.colors?.primary || '#3182ce'}; color: #fff; &:hover { opacity: 0.9; } &:disabled { opacity: 0.6; cursor: not-allowed; } }
+`;
+
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins  = Math.floor(diff / 60000);
@@ -193,12 +268,24 @@ export default function NotificationDropdown({
   onClose,
   isMarking,
   isDeleting,
+  isAdmin,
 }) {
   const panelRef = useRef(null);
+  const dispatch = useDispatch();
+
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
 
   // Close on Escape
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e) => { 
+      if (e.key === 'Escape') {
+        if (showBroadcastModal) setShowBroadcastModal(false);
+        else onClose();
+      }
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
@@ -278,7 +365,67 @@ export default function NotificationDropdown({
             })
           )}
         </List>
+
+        {isAdmin && (
+          <BroadcastBtn onClick={() => setShowBroadcastModal(true)}>
+            <SoundOutlined /> Broadcast Announcement
+          </BroadcastBtn>
+        )}
       </Panel>
+
+      {showBroadcastModal && createPortal(
+        <ModalOverlay onClick={(e) => { if (e.target === e.currentTarget) setShowBroadcastModal(false); }}>
+          <ModalCard>
+            <ModalHead>
+              Send System Broadcast
+              <IconBtn onClick={() => setShowBroadcastModal(false)}><CloseOutlined /></IconBtn>
+            </ModalHead>
+            <ModalBody>
+              <InputGroup>
+                <label>Subject / Title</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. System Maintenance"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  maxLength={100}
+                />
+              </InputGroup>
+              <InputGroup>
+                <label>Message</label>
+                <textarea 
+                  placeholder="Type your announcement to all staff members here..."
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  maxLength={1000}
+                />
+              </InputGroup>
+            </ModalBody>
+            <ModalFoot>
+              <button className="cancel" onClick={() => setShowBroadcastModal(false)}>Cancel</button>
+              <button 
+                className="send" 
+                disabled={isBroadcasting || !broadcastTitle.trim() || !broadcastMessage.trim()}
+                onClick={() => {
+                  setIsBroadcasting(true);
+                  dispatch(broadcastRequest({ title: broadcastTitle.trim(), message: broadcastMessage.trim() }));
+                  setTimeout(() => {
+                    setIsBroadcasting(false);
+                    setShowBroadcastModal(false);
+                    setBroadcastTitle('');
+                    setBroadcastMessage('');
+                    // Option to close the entire dropdown as well:
+                    onClose();
+                  }, 800);
+                }}
+              >
+                {isBroadcasting ? 'Sending...' : 'Send Broadcast'}
+              </button>
+            </ModalFoot>
+          </ModalCard>
+        </ModalOverlay>,
+        document.body
+      )}
     </>
   );
 }

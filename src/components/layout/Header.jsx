@@ -317,6 +317,7 @@ export default function Header({ onMenuToggle, hidden }) {
               onClose={closeDropdown}
               isMarking={isMarking}
               isDeleting={isDeleting}
+              isAdmin={user?.role?.toLowerCase() === 'admin'}
             />
           )}
         </BellWrap>
