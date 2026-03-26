@@ -52,8 +52,8 @@ const EmptyTitle    = styled.div`font-size:15px;font-weight:600;color:#0e1b2a;ma
 const EmptyText     = styled.div`font-size:13px;color:#a0aab4;`;
 
 // ── Modal styled components ───────────────────────────────────────────────────
-const Overlay       = styled.div`position:fixed;inset:0;background:rgba(14,27,42,0.5);display:flex;align-items:flex-start;justify-content:center;z-index:999;padding:2rem 1rem;overflow-y:auto;`;
-const ModalCard     = styled.div`background:white;border-radius:16px;padding:2rem;width:100%;max-width:500px;margin:auto;animation:${fadeUp} 0.25s ease both;`;
+const Overlay       = styled.div`position:fixed;inset:0;background:rgba(14,27,42,0.5);display:flex;align-items:flex-start;justify-content:center;z-index:999;padding:4vh 1rem;overflow-y:auto;`;
+const ModalCard     = styled.div`background:white;border-radius:16px;padding:2rem;width:100%;max-width:500px;margin:0 auto auto auto;animation:${fadeUp} 0.25s ease both;`;
 const ModalTitle    = styled.h2`font-size:18px;font-weight:600;color:#0e1b2a;margin:0 0 1.5rem;display:flex;align-items:center;justify-content:space-between;`;
 const FormGrid      = styled.div`display:flex;flex-direction:column;gap:16px;margin-bottom:1.5rem;`;
 const Field         = styled.div`display:flex;flex-direction:column;gap:6px;`;
