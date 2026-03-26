@@ -4,6 +4,7 @@ import {
   fetchUsersAPI, fetchAllUsersAPI, fetchUserByIdAPI,
   createUserAPI, updateUserAPI, deleteUserAPI,
   toggleUserStatusAPI, fetchRolesAPI, fetchDepartmentsAPI,
+  fetchProvidersAPI,
 } from './userAPI';
 
 import {
@@ -16,6 +17,7 @@ import {
   toggleUserStatusRequest, toggleUserStatusSuccess,  toggleUserStatusFailure,
   fetchRolesRequest,       fetchRolesSuccess,        fetchRolesFailure,
   fetchDepartmentsRequest, fetchDepartmentsSuccess,  fetchDepartmentsFailure,
+  fetchProvidersRequest,   fetchProvidersSuccess,    fetchProvidersFailure,
 } from './userSlice';
 
 const extractMessage = (error, fallback = 'An error occurred.') =>
@@ -62,6 +64,19 @@ function* handleFetchAllUsers(action) {
     yield put(fetchAllUsersSuccess(users));
   } catch (error) {
     yield put(fetchAllUsersFailure(extractMessage(error, 'Failed to load users.')));
+  }
+}
+
+// ── 2b. Fetch Providers (for Appointment booking dropdown) ───────────────────
+//    GET /api/users/providers
+function* handleFetchProviders() {
+  try {
+    const response  = yield call(fetchProvidersAPI, {});
+    const payload   = response?.data ?? response;
+    const providers = payload.providers ?? [];
+    yield put(fetchProvidersSuccess(providers));
+  } catch (error) {
+    yield put(fetchProvidersFailure(extractMessage(error, 'Failed to load providers.')));
   }
 }
 
@@ -150,6 +165,7 @@ function* handleFetchDepartments() {
 export default function* userSaga() {
   yield takeLatest(fetchUsersRequest.type,        handleFetchUsers);
   yield takeLatest(fetchAllUsersRequest.type,     handleFetchAllUsers);
+  yield takeLatest(fetchProvidersRequest.type,    handleFetchProviders);
   yield takeLatest(fetchUserRequest.type,         handleFetchUser);
   yield takeLatest(createUserRequest.type,        handleCreateUser);
   yield takeLatest(updateUserRequest.type,        handleUpdateUser);

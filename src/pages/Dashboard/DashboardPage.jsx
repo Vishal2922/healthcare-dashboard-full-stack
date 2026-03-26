@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled, { keyframes, useTheme } from 'styled-components';
 import useAuth from '../../modules/auth/hooks/useAuth';
 import axiosClient from '../../services/axiosClient';
@@ -589,6 +590,7 @@ function n(v) { return v ?? '—'; }
 export default function DashboardPage() {
   const { user }                  = useAuth();
   const sysTheme                  = useTheme();
+  const navigate                  = useNavigate();
   const [stats,   setStats]       = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error,   setError]       = useState(false);
@@ -609,6 +611,12 @@ export default function DashboardPage() {
   const hasAppointments  = stats?.appointments_today != null;
   const hasPrescriptions = stats?.total_prescriptions != null;
   const hasStaff         = stats?.active_staff != null;
+  const isPatient        = user?.role_name === 'Patient' || user?.role === 'Patient';
+  const isProvider       = user?.role_name === 'Provider' || user?.role === 'Provider';
+  const isAdmin          = user?.role_name === 'Admin' || user?.role === 'Admin';
+  const isReceptionist   = user?.role_name === 'Receptionist' || user?.role === 'Receptionist';
+  const isNurse          = user?.role_name === 'Nurse' || user?.role === 'Nurse';
+  const isPharmacist     = user?.role_name === 'Pharmacist' || user?.role === 'Pharmacist';
 
   const recentAppointments  = stats?.recent_appointments  ?? [];
   const recentInvoices      = stats?.recent_invoices      ?? [];
@@ -625,9 +633,9 @@ export default function DashboardPage() {
     ? stats.patients_created_last_6_months
     : [];
 
-  const hasInvoiceStatusBreakdown = invoiceStatusBreakdown.length > 0;
-  const hasRevenueTrend            = revenueLast6Months.length > 0;
-  const hasPatientsCreatedTrend  = patientsCreatedLast6Months.length > 0;
+  const hasInvoiceStatusBreakdown = invoiceStatusBreakdown.length > 0 && !isReceptionist && !isNurse && !isPharmacist && !isProvider;
+  const hasRevenueTrend            = revenueLast6Months.length > 0 && !isReceptionist && !isNurse && !isPharmacist && !isProvider;
+  const hasPatientsCreatedTrend  = patientsCreatedLast6Months.length > 0 && !isPatient;
 
   const invoiceStatusPieData = invoiceStatusBreakdown
     .filter((d) => (d?.value ?? 0) > 0)
@@ -700,6 +708,23 @@ export default function DashboardPage() {
     });
   }
 
+  if (user?.role_name === 'Patient' || user?.role === 'Patient') {
+    overviewKpis.push({
+      label: 'My Appointments',
+      value: 'Book Now',
+      note: 'Schedule a visit',
+      accent: T.indigo, bg: T.indigoL, icon: '📅',
+      link: '/appointments'
+    });
+    overviewKpis.push({
+      label: 'My Bills',
+      value: 'View & Pay',
+      note: 'Manage invoices',
+      accent: T.sky, bg: T.skyL, icon: '💳',
+      link: '/billing'
+    });
+  }
+
 
 
   return (
@@ -736,7 +761,7 @@ export default function DashboardPage() {
           {!error && (
             <Section $delay="0.05s">
               <SectionHead>
-                <SectionTitle>Overview</SectionTitle>
+                <SectionTitle>{isPatient ? 'My Health Summary' : 'Overview'}</SectionTitle>
                 <SectionRule />
               </SectionHead>
 
@@ -744,8 +769,8 @@ export default function DashboardPage() {
                 <KpiGrid>
                   {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
                 </KpiGrid>
-              ) : hasBilling ? (
-                /* Admin: Hero revenue + supporting KPIs */
+              ) : (hasBilling && (isAdmin || user?.role_name === 'Receptionist')) ? (
+                /* Admin/Receptionist: Hero revenue + supporting KPIs */
                 <PrimaryGrid>
                   <HeroKpi>
                     <HeroKpiTop>
@@ -784,8 +809,8 @@ export default function DashboardPage() {
                     </div>
                   </HeroKpi>
 
-                  {overviewKpis.map(({ label, value, note, accent, bg, icon }) => (
-                    <KpiCard key={label} $accent={accent}>
+                  {overviewKpis.map(({ label, value, note, accent, bg, icon, link }) => (
+                    <KpiCard key={label} $accent={accent} onClick={() => link && navigate(link)} style={{ cursor: link ? 'pointer' : 'default' }}>
                       <KpiTop>
                         <KpiLabel>{label}</KpiLabel>
                         <KpiIcon $bg={bg}>{icon}</KpiIcon>
@@ -798,8 +823,8 @@ export default function DashboardPage() {
               ) : (
                 /* Non-admin roles: KPI-only grid (no revenue hero) */
                 <KpiGrid>
-                  {overviewKpis.map(({ label, value, note, accent, bg, icon }) => (
-                    <KpiCard key={label} $accent={accent}>
+                  {overviewKpis.map(({ label, value, note, accent, bg, icon, link }) => (
+                    <KpiCard key={label} $accent={accent} onClick={() => link && navigate(link)} style={{ cursor: link ? 'pointer' : 'default' }}>
                       <KpiTop>
                         <KpiLabel>{label}</KpiLabel>
                         <KpiIcon $bg={bg}>{icon}</KpiIcon>
@@ -817,7 +842,7 @@ export default function DashboardPage() {
           {!error && !loading && (hasInvoiceStatusBreakdown || hasRevenueTrend || hasPatientsCreatedTrend) && (
             <Section $delay="0.15s">
               <SectionHead>
-                <SectionTitle>Clinic Overview</SectionTitle>
+                <SectionTitle>{isPatient ? 'Personal Trends' : 'Clinic Trends'}</SectionTitle>
                 <SectionCount>Last 6 months</SectionCount>
                 <SectionRule />
               </SectionHead>
@@ -911,7 +936,7 @@ export default function DashboardPage() {
                   <PanelHead>
                     <PanelTitle>
                       <PanelIcon $bg={T.skyL}>📈</PanelIcon>
-                      Monthly Revenue
+                      {isPatient ? 'Billing History' : 'Monthly Revenue'}
                     </PanelTitle>
                     <PanelBadge>₹</PanelBadge>
                   </PanelHead>
@@ -924,7 +949,7 @@ export default function DashboardPage() {
                           <XAxis dataKey="month" />
                           <YAxis tickFormatter={(v) => fmt(v)} />
                           <ChartTooltip
-                            formatter={(value) => [fmt(value), 'Revenue']}
+                            formatter={(value) => [fmt(value), isPatient ? 'Amount' : 'Revenue']}
                           />
                           <Line
                             type="monotone"
@@ -947,7 +972,7 @@ export default function DashboardPage() {
                   <PanelHead>
                     <PanelTitle>
                       <PanelIcon $bg={T.indigoL}>👥</PanelIcon>
-                      Patients Created
+                      {isPatient ? 'Visit History' : 'Patients Created'}
                     </PanelTitle>
                     <PanelBadge>6 mo</PanelBadge>
                   </PanelHead>
@@ -960,7 +985,7 @@ export default function DashboardPage() {
                           <XAxis dataKey="month" />
                           <YAxis />
                           <ChartTooltip
-                            formatter={(value) => [`${value} patients`, 'Created']}
+                            formatter={(value) => [`${value}`, isPatient ? 'Activity' : 'Created']}
                           />
                           <Bar
                             dataKey="count"
@@ -978,8 +1003,8 @@ export default function DashboardPage() {
             </Section>
           )}
 
-          {/* ── Prescriptions KPIs — Admin, Provider, Pharmacist ────── */}
-          {!error && hasPrescriptions && hasBilling && (
+          {/* ── Prescriptions KPIs — Admin, Pharmacist, Provider (Total only) ────── */}
+          {!error && hasPrescriptions && (isAdmin || isPharmacist || isProvider) && (
             <Section $delay="0.12s">
               <SectionHead>
                 <SectionTitle>Prescriptions</SectionTitle>
@@ -988,7 +1013,7 @@ export default function DashboardPage() {
 
               {loading ? (
                 <KpiGrid>
-                  {Array.from({ length: 3 }).map((_, i) => <KpiSkeleton key={i} />)}
+                  {Array.from({ length: (isPharmacist || isAdmin) ? 3 : 1 }).map((_, i) => <KpiSkeleton key={i} />)}
                 </KpiGrid>
               ) : (
                 <KpiGrid>
@@ -998,20 +1023,23 @@ export default function DashboardPage() {
                       value: n(stats?.total_prescriptions),
                       note: 'All time',
                       accent: T.indigo, bg: T.indigoL, icon: '💊',
+                      show: true
                     },
                     {
                       label: 'Pending Dispense',
                       value: n(stats?.pending_prescriptions),
                       note: 'Awaiting pharmacist',
                       accent: T.gold, bg: T.goldL, icon: '⏳',
+                      show: isAdmin || isPharmacist
                     },
                     {
                       label: 'Dispensed',
                       value: n(stats?.dispensed_prescriptions),
                       note: 'Successfully issued',
                       accent: T.accent, bg: T.accentL, icon: '✅',
+                      show: isAdmin || isPharmacist
                     },
-                  ].map(({ label, value, note, accent, bg, icon }) => (
+                  ].filter(k => k.show).map(({ label, value, note, accent, bg, icon }) => (
                     <KpiCard key={label} $accent={accent}>
                       <KpiTop>
                         <KpiLabel>{label}</KpiLabel>
@@ -1095,11 +1123,11 @@ export default function DashboardPage() {
             </Section>
           )}
 
-          {/* ── Recent Invoices — Admin only ──────────────────────────── */}
-          {!loading && !error && recentInvoices.length > 0 && (
+          {/* ── Recent Invoices — Admin, Receptionist, Patient only ──────────────────────────── */}
+          {!loading && !error && recentInvoices.length > 0 && (isAdmin || isReceptionist || isPatient) && (
             <Section $delay="0.22s">
               <SectionHead>
-                <SectionTitle>Recent Invoices</SectionTitle>
+                <SectionTitle>{isPatient ? 'My Recent Invoices' : 'Recent Invoices'}</SectionTitle>
                 <SectionCount>{recentInvoices.length}</SectionCount>
                 <SectionRule />
               </SectionHead>

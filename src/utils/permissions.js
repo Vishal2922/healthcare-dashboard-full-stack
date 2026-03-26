@@ -18,10 +18,10 @@ export const PERMISSIONS = {
   },
 
   appointments: {
-    view:         ['Provider', 'Nurse'],
-    create:       ['Provider', 'Nurse'],
+    view:         ['Provider', 'Nurse', 'Patient'],
+    create:       ['Provider', 'Nurse', 'Patient'],
     edit:         ['Provider', 'Nurse'],
-    cancel:       ['Provider'],
+    cancel:       ['Provider', 'Patient'],
     updateStatus: ['Provider', 'Nurse'],
   },
 
@@ -33,11 +33,11 @@ export const PERMISSIONS = {
   },
 
   billing: {
-    view:         ['Admin'],
-    create:       ['Admin'],
-    edit:         ['Admin'],
-    delete:       ['Admin'],
-    updateStatus: ['Admin'],
+    view:         ['Receptionist', 'Patient', 'Provider'],
+    create:       ['Provider'],
+    edit:         ['Provider', 'Patient'],
+    delete:       [],
+    updateStatus: ['Provider', 'Patient'],
   },
 
   staff: {
@@ -68,7 +68,7 @@ export const PERMISSIONS = {
   },
 
   dashboard: {
-    view: ['Admin', 'Provider', 'Pharmacist'],
+    view: ['Admin', 'Provider', 'Pharmacist', 'Nurse', 'Receptionist', 'Patient'],
   },
 
   settings: {

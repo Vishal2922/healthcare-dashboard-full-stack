@@ -7,15 +7,20 @@ import {
   createUserRequest, updateUserRequest,
   deleteUserRequest, toggleUserStatusRequest,
   fetchRolesRequest, fetchDepartmentsRequest,
-  clearSelectedUser, clearUsersError, setUsersPage,
+  fetchProvidersRequest,
+  setUsersPage,
+  clearUsersError,
+  clearSelectedUser,
 } from '../userSlice';
-
+import { fetchAllPatientsRequest } from '../../patients/patientSlice';
 import {
   selectUsers, selectAllUsers, selectAllUsersLoading,
   selectUsersPagination, selectUsersFilters,
   selectSelectedUser, selectUsersLoading, selectUsersSubmitting,
   selectUsersError, selectRoles, selectDepartments,
+  selectProviders, selectProvidersLoading,
 } from '../selectors';
+import { selectAllPatients, selectAllPatientsLoading } from '../../patients/patientSlice';
 
 export default function useUsers() {
   const dispatch = useDispatch();
@@ -31,9 +36,14 @@ export default function useUsers() {
   const error           = useSelector(selectUsersError);
   const roles           = useSelector(selectRoles);
   const departments     = useSelector(selectDepartments);
+  const providers       = useSelector(selectProviders);
+  const providersLoading= useSelector(selectProvidersLoading);
+  const allPatients     = useSelector(selectAllPatients);
+  const allPatientsLoading = useSelector(selectAllPatientsLoading);
 
   const fetchUsers      = useCallback((params = {}) => dispatch(fetchUsersRequest(params)),    [dispatch]);
   const fetchAllUsers   = useCallback((params = {}) => dispatch(fetchAllUsersRequest(params)), [dispatch]);
+  const fetchProviders  = useCallback(()            => dispatch(fetchProvidersRequest()),      [dispatch]);
   const fetchUserById   = useCallback((id)          => dispatch(fetchUserRequest(id)),         [dispatch]);
   const createUser      = useCallback((data)        => dispatch(createUserRequest(data)),      [dispatch]);
   const updateUser      = useCallback((data)        => dispatch(updateUserRequest(data)),      [dispatch]);
@@ -51,6 +61,7 @@ export default function useUsers() {
 
   const fetchRoles       = useCallback(() => dispatch(fetchRolesRequest()),       [dispatch]);
   const fetchDepartments = useCallback(() => dispatch(fetchDepartmentsRequest()), [dispatch]);
+  const fetchAllPatients = useCallback(() => dispatch(fetchAllPatientsRequest()), [dispatch]);
   const clearUser        = useCallback(() => dispatch(clearSelectedUser()),        [dispatch]);
   const dismissError     = useCallback(() => dispatch(clearUsersError()),         [dispatch]);
 
@@ -60,13 +71,15 @@ export default function useUsers() {
     loading, submitting, error,
     // All users (for picker dropdown)
     allUsers, allUsersLoading,
+    // Providers (for patient dropdown)
+    providers, providersLoading,
     // Reference data
-    roles, departments,
+    roles, departments, allPatients, allPatientsLoading,
     // Actions
-    fetchUsers, fetchAllUsers, fetchUserById,
+    fetchUsers, fetchAllUsers, fetchProviders, fetchUserById,
     createUser, updateUser, deleteUser,
     toggleStatus, goToPage,
-    fetchRoles, fetchDepartments,
+    fetchRoles, fetchDepartments, fetchAllPatients,
     clearUser, dismissError,
   };
 }

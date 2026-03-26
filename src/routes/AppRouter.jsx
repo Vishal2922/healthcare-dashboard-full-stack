@@ -101,12 +101,12 @@ export default function AppRouter() {
             </Route>
 
             {/* Appointments */}
-            <Route element={<RoleBasedRoute roles={['Provider', 'Nurse']} />}>
+            <Route element={<RoleBasedRoute roles={['Admin', 'Provider', 'Nurse', 'Patient']} />}>
               <Route path="/appointments" element={<AppointmentList />} />
             </Route>
 
             {/* Calendar */}
-            <Route element={<RoleBasedRoute roles={['Receptionist', 'Admin']} />}>
+            <Route element={<RoleBasedRoute roles={['Admin', 'Provider', 'Receptionist']} />}>
               <Route path="/appointments/calendar" element={<AppointmentCalendar />} />
             </Route>
 
@@ -116,7 +116,7 @@ export default function AppRouter() {
             </Route>
 
             {/* Billing */}
-            <Route element={<RoleBasedRoute roles={['Admin']} />}>
+            <Route element={<RoleBasedRoute roles={['Receptionist', 'Patient']} />}>
               <Route path="/billing" element={<InvoicePage />} />
             </Route>
 

@@ -21,33 +21,8 @@ import useOfflineQueue from '../../hooks/useOfflineQueue';
 export default function DashboardLayout() {
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen]         = useState(true);
-  const [headerHidden, setHeaderHidden]       = useState(false);
-  const lastScrollY                           = useRef(0);
   const { pendingCount, isOnline } = useOfflineQueue();
 
-  useEffect(() => {
-    const handleWindowScroll = () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY.current && currentScrollY > 64) {
-        setHeaderHidden(true);
-      } else if (currentScrollY < lastScrollY.current) {
-        setHeaderHidden(false);
-      }
-      lastScrollY.current = currentScrollY;
-    };
-    window.addEventListener('scroll', handleWindowScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleWindowScroll);
-  }, []);
-
-  const handleMainScroll = (e) => {
-    const currentScrollY = e.target.scrollTop;
-    if (currentScrollY > lastScrollY.current && currentScrollY > 64) {
-      setHeaderHidden(true);
-    } else if (currentScrollY < lastScrollY.current) {
-      setHeaderHidden(false);
-    }
-    lastScrollY.current = currentScrollY;
-  };
 
   return (
     <>
@@ -77,7 +52,6 @@ export default function DashboardLayout() {
           onQueueBadgeClick={() => setQueueDrawerOpen(true)}
           pendingCount={pendingCount}
           onMenuToggle={() => setSidebarOpen(p => !p)}
-          hidden={headerHidden}
         />
 
         <div style={{ display: 'flex', flex: 1 }}>
@@ -91,7 +65,6 @@ export default function DashboardLayout() {
               marginLeft: sidebarOpen ? '240px' : '0',
               transition: 'margin-left 0.25s ease'
             }}
-            onScroll={handleMainScroll}
           >
             <Outlet />
           </main>

@@ -12,7 +12,7 @@ export default function AppointmentCalendar() {
   } = useAppointments();
 
   const { patientList, fetchPatients } = usePatients();
-  const { allUsers, fetchAllUsers } = useUsers();
+  const { providers, fetchProviders } = useUsers();
 
   const today = new Date();
   const [view, setView] = useState('month');
@@ -30,7 +30,7 @@ export default function AppointmentCalendar() {
   useEffect(() => {
     loadAppointments({ page: 1, perPage: 100 });
     if (fetchPatients) fetchPatients({ per_page: 100 });
-    if (fetchAllUsers) fetchAllUsers();
+    if (fetchProviders) fetchProviders();
   }, [currentDate]); // eslint-disable-line
 
   const navigate = (dir) => setCurrentDate((d) => {
@@ -61,11 +61,13 @@ export default function AppointmentCalendar() {
   }, [list]);
 
   const STATUS_STYLE = {
+    pending: { bg: '#fffaf0', border: '#ed8936', text: '#dd6b20' },
     scheduled: { bg: '#ebf8ff', border: '#3182ce', text: '#2b6cb0' },
     arrived: { bg: '#fffff0', border: '#d69e2e', text: '#975a16' },
     'in-consultation': { bg: '#faf5ff', border: '#805ad5', text: '#553c9a' },
     completed: { bg: '#f0fff4', border: '#38a169', text: '#276749' },
     cancelled: { bg: '#fff5f5', border: '#e53e3e', text: '#c53030' },
+    declined: { bg: '#fff5f5', border: '#e53e3e', text: '#e53e3e' },
   };
 
   const ApptCard = ({ appt }) => {
@@ -164,7 +166,15 @@ export default function AppointmentCalendar() {
     );
   };
 
-  const NEXT_STATUSES = { scheduled: ['arrived', 'cancelled'], arrived: ['in-consultation', 'cancelled'], 'in-consultation': ['completed', 'cancelled'] };
+  const NEXT_STATUSES = {
+    pending:           ['scheduled', 'declined', 'cancelled'],
+    scheduled:         ['arrived', 'cancelled'],
+    arrived:           ['in-consultation', 'cancelled'],
+    'in-consultation': ['completed', 'cancelled'],
+    completed:         [],
+    cancelled:         [],
+    declined:          [],
+  };
 
   const DetailPanel = () => {
     if (!selectedAppt) return null;
@@ -186,9 +196,29 @@ export default function AppointmentCalendar() {
           ))}
           {!isFinal && !busy && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-              {next.filter((s) => s !== 'cancelled').map((s) => (
-                <button key={s} onClick={() => { updateStatus(selectedAppt.id, s); setSelectedAppt(null); }} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #bee3f8', background: '#ebf8ff', color: '#2b6cb0', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  Mark: {s}
+              {next
+                .filter((s) => s !== 'cancelled')
+                .filter((s) => {
+                  if (s === 'completed') {
+                    return new Date(selectedAppt.appointment_time) <= new Date();
+                  }
+                  return true;
+                })
+                .map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { updateStatus(selectedAppt.id, s); setSelectedAppt(null); }}
+                  style={{
+                    padding: '7px 14px', borderRadius: 7, border: '1px solid #bee3f8',
+                    background: s === 'declined' ? '#fff5f5' : '#ebf8ff',
+                    color: s === 'declined' ? '#e53e3e' : '#2b6cb0',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    borderColor: s === 'declined' ? '#fed7d7' : '#bee3f8',
+                  }}
+                >
+                  {s === 'scheduled' && (selectedAppt.status === 'pending' ? '✅ Accept' : 'Confirm')}
+                  {s === 'declined' && '❌ Decline'}
+                  {s !== 'scheduled' && s !== 'declined' && `Mark: ${s}`}
                 </button>
               ))}
               <button onClick={() => { if (window.confirm('Cancel this appointment?')) { cancelAppointment(selectedAppt.id); setSelectedAppt(null); } }} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #fed7d7', background: '#fff5f5', color: '#c53030', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
@@ -250,7 +280,7 @@ export default function AppointmentCalendar() {
         <AppointmentForm
           onClose={() => setShowBookModal(false)}
           patients={patientList || []}
-          doctors={(allUsers || []).filter(u => u.role_name === 'Provider')}
+          doctors={providers || []}
         />
       )}
     </div>

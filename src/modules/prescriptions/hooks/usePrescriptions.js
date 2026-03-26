@@ -29,7 +29,7 @@ import {
 
 import { selectUserRole } from '../../auth/selectors';
 
-const ALLOWED_ROLES = ['Admin', 'Provider', 'Pharmacist'];
+const ALLOWED_ROLES = ['Admin', 'Provider', 'Pharmacist', 'Patient'];
 
 export default function usePrescriptions() {
   const dispatch = useDispatch();
@@ -45,11 +45,7 @@ export default function usePrescriptions() {
 
   const hasAccess = ALLOWED_ROLES.includes(userRole);
 
-  // ── Auto-load list on mount (guarded) ────────────────────────────────────
-  useEffect(() => {
-    if (!hasAccess) return;
-    dispatch(fetchPrescriptionsRequest());
-  }, [dispatch, hasAccess]);
+// ── Auto-load list on mount (removed to prevent duplication in profile) ────
 
   // ── All callbacks unconditional ───────────────────────────────────────────
   const fetchPrescriptions = useCallback(

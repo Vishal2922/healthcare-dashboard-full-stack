@@ -102,7 +102,7 @@ function formatDate(d) {
 }
 
 // ─── Build dropdown items ─────────────────────────────────────────────────────
-function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, canWrite, canDelete }) {
+function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete }) {
   const items = [
     {
       key: 'view',
@@ -119,7 +119,7 @@ function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, 
     },
   ];
 
-  if (canWrite && (record.status === 'unpaid' || record.status === 'pending')) {
+  if (canPay && (record.status === 'unpaid' || record.status === 'pending')) {
     items.push({
       key: 'mark-paid',
       icon: <CheckCircleOutlined />,
@@ -128,7 +128,7 @@ function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, 
     });
   }
 
-  if (canWrite && record.status !== 'cancelled') {
+  if (canCreate && record.status !== 'cancelled') {
     items.push({
       key: 'cancel',
       icon: <FileTextOutlined />,
@@ -164,7 +164,7 @@ function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, 
 }
 
 // ─── Table columns ────────────────────────────────────────────────────────────
-function buildColumns({ onView, onStatusChange, onDelete, onDownload, canWrite, canDelete }) {
+function buildColumns({ onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete }) {
   return [
     {
       title: 'Invoice #',
@@ -242,7 +242,7 @@ function buildColumns({ onView, onStatusChange, onDelete, onDownload, canWrite, 
         <Dropdown
           menu={{
             items: buildMenuItems({
-              record, onView, onStatusChange, onDelete, onDownload, canWrite, canDelete,
+              record, onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete,
             }),
           }}
           trigger={['click']}
@@ -275,7 +275,7 @@ export default function InvoicePage() {
   const {
     invoiceList, summary, meta, filters, listLoading, formLoading,
     summaryLoading, error, successMessage, isOnline, pendingCount, isFlushing,
-    canWrite, canDelete,
+    canCreate, canPay, canWrite, canDelete,
     createInvoice, updateInvoiceStatus, deleteInvoice, fetchInvoiceById,
     selectInvoice, clearInvoice, dismissError, dismissSuccess,
   } = billing.accessDenied ? {} : billing;
@@ -364,6 +364,8 @@ export default function InvoicePage() {
     onStatusChange: handleStatusChange,
     onDelete:       deleteInvoice,
     onDownload:     handleDownload,
+    canCreate,
+    canPay,
     canWrite,
     canDelete,
   });
@@ -423,7 +425,7 @@ export default function InvoicePage() {
               loading={listLoading}
             />
           </Tooltip>
-          {canWrite && (
+          {canCreate && (
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -564,7 +566,8 @@ export default function InvoicePage() {
         open={detailDrawerOpen}
         onClose={handleCloseDetail}
         onStatusChange={handleStatusChange}
-        canWrite={canWrite}
+        canCreate={canCreate}
+        canPay={canPay}
         formLoading={formLoading}
         isOnline={isOnline}
       />

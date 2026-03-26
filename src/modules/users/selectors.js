@@ -2,6 +2,8 @@ export const selectUsersState       = (state) => state.users;
 export const selectUsers            = (state) => state.users.users;
 export const selectAllUsers         = (state) => state.users.allUsers;
 export const selectAllUsersLoading  = (state) => state.users.allUsersLoading;
+export const selectProviders        = (state) => state.users.providers;
+export const selectProvidersLoading = (state) => state.users.providersLoading;
 export const selectUsersPagination  = (state) => state.users.pagination;
 export const selectUsersFilters     = (state) => state.users.filters;
 export const selectSelectedUser     = (state) => state.users.selectedUser;

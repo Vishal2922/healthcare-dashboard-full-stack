@@ -85,6 +85,9 @@ const EMPTY_FORM = {
   department:     '',
   specialization: '',
   hire_date:      '',
+  patient_id:     '',
+  dob:            '',
+  gender:         '',
   status:         'active',
 };
 
@@ -92,10 +95,10 @@ const EMPTY_FORM = {
 export default function UserManagement() {
   const {
     users, pagination, loading, submitting, error,
-    roles, departments,
+    roles, departments, allPatients,
     fetchUsers,
     createUser, updateUser, deleteUser, toggleStatus,
-    fetchRoles, fetchDepartments, dismissError,
+    fetchRoles, fetchDepartments, fetchAllPatients, dismissError,
   } = useUsers();
 
   const { can } = usePermission();
@@ -117,6 +120,7 @@ export default function UserManagement() {
     fetchUsers();
     fetchRoles();
     fetchDepartments();
+    fetchAllPatients();
   }, []); // eslint-disable-line
 
   // ── Debounced search / filter ─────────────────────────────────────────────
@@ -436,6 +440,45 @@ export default function UserManagement() {
                     ))}
                   </FieldSelect>
                 </Field>
+
+                {/* ── Patient-Specific Clinical Fields ── */}
+                {(() => {
+                  const selectedRole = roles.find(r => String(r.id) === String(form.role_id));
+                  const isPatientRole = selectedRole?.role_name?.toLowerCase() === 'patient' 
+                    || (selectedRole?.name && selectedRole.name.toLowerCase() === 'patient');
+                  
+                  if (!isPatientRole) return null;
+
+                  return (
+                    <>
+                      <Field>
+                        <FieldLabel htmlFor="dob">Date of Birth *</FieldLabel>
+                        <FieldInput
+                          id="dob"
+                          type="date"
+                          value={form.dob}
+                          onChange={e => setForm({ ...form, dob: e.target.value })}
+                          required
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="gender">Gender *</FieldLabel>
+                        <FieldSelect
+                          id="gender"
+                          value={form.gender}
+                          onChange={e => setForm({ ...form, gender: e.target.value })}
+                          required
+                        >
+                          <option value="">Select gender…</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </FieldSelect>
+                      </Field>
+                    </>
+                  );
+                })()}
 
                 <Field>
                   <FieldLabel htmlFor="department">Department</FieldLabel>

@@ -68,8 +68,9 @@ function buildParams(actionPayload, meta, filters) {
   return {
     page:     actionPayload?.page     ?? meta?.page     ?? 1,
     per_page: actionPayload?.per_page ?? meta?.per_page ?? DEFAULT_PER_PAGE,
-    ...(filters?.patient_id ? { patient_id: filters.patient_id } : {}),
-    ...(filters?.status     ? { status: filters.status }         : {}),
+    // Extract from state filters, action payload filters, OR action payload top-level
+    patient_id: actionPayload?.patient_id ?? actionPayload?.filters?.patient_id ?? filters?.patient_id,
+    status:     actionPayload?.status     ?? actionPayload?.filters?.status     ?? filters?.status,
     ...(actionPayload?.filters ?? {}),
   };
 }

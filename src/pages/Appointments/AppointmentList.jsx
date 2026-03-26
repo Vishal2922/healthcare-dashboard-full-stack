@@ -45,7 +45,7 @@ export default function AppointmentList() {
   });
 
   const { patientList, fetchPatients } = usePatients();
-  const { allUsers, fetchAllUsers } = useUsers();
+  const { providers, fetchProviders } = useUsers();
 
   const { can } = usePermission();
 
@@ -67,7 +67,7 @@ export default function AppointmentList() {
     loadAppointments({ page: 1 }); 
     if (canCreate) {
       if (fetchPatients) fetchPatients({ per_page: 100 });
-      if (fetchAllUsers) fetchAllUsers();
+      if (fetchProviders) fetchProviders();
     }
   }, []); // eslint-disable-line
 
@@ -93,19 +93,23 @@ export default function AppointmentList() {
   );
 
   const NEXT_STATUSES = {
+    pending:           ['scheduled', 'declined', 'cancelled'],
     scheduled:         ['arrived', 'cancelled'],
     arrived:           ['in-consultation', 'cancelled'],
     'in-consultation': ['completed', 'cancelled'],
     completed:         [],
     cancelled:         [],
+    declined:          [],
   };
 
   const STATUS_STYLE = {
+    pending:           { color: '#dd6b20', bg: '#fffaf0' },
     scheduled:         { color: '#2b6cb0', bg: '#ebf8ff' },
     arrived:           { color: '#975a16', bg: '#fffff0' },
     'in-consultation': { color: '#553c9a', bg: '#faf5ff' },
     completed:         { color: '#276749', bg: '#f0fff4' },
     cancelled:         { color: '#c53030', bg: '#fff5f5' },
+    declined:          { color: '#e53e3e', bg: '#fff5f5' },
   };
 
   const StatusBadge = ({ status }) => {
@@ -155,11 +159,13 @@ export default function AppointmentList() {
         <label style={{ fontSize: 13, fontWeight: 600, color: '#4a5568' }}>Status:</label>
         <select value={filters.status} onChange={handleFilterChange} style={S.filterSelect}>
           <option value="">All</option>
+          <option value="pending">Pending Approval</option>
           <option value="scheduled">Scheduled</option>
           <option value="arrived">Arrived</option>
           <option value="in-consultation">In Consultation</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
+          <option value="declined">Declined</option>
         </select>
         {loading && <span style={{ fontSize: 12, color: '#a0aec0' }}>Loading…</span>}
       </div>
@@ -270,8 +276,19 @@ export default function AppointmentList() {
                         <span style={{ fontSize: 11, color: '#a0aec0' }}>Updating…</span>
                       ) : (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {canUpdateStatus && next.filter((s) => s !== 'cancelled').map((s) => (
-                            <button key={s} style={S.actionBtn} onClick={() => handleStatusChange(appt.id, s)}>
+                          {canUpdateStatus && next
+                            .filter((s) => s !== 'cancelled')
+                            .filter((s) => {
+                              // Don't show 'completed' for future appointments
+                              if (s === 'completed') {
+                                return new Date(appt.appointment_time) <= new Date();
+                              }
+                              return true;
+                            })
+                            .map((s) => (
+                              <button key={s} style={s === 'declined' ? S.declineBtn : S.actionBtn} onClick={() => handleStatusChange(appt.id, s)}>
+                              {s === 'scheduled'        && (appt.status === 'pending' ? '✅ Accept' : '✓ Schedule')}
+                              {s === 'declined'         && '❌ Decline'}
                               {s === 'arrived'          && '✓ Arrived'}
                               {s === 'in-consultation'  && '🩺 Consult'}
                               {s === 'completed'        && '✔ Complete'}
@@ -304,12 +321,11 @@ export default function AppointmentList() {
         />
       </div>
 
-      {/* ── Book Appointment Modal ───────────────────────────────────────────── */}
       {canCreate && showBookModal && (
         <AppointmentForm 
           onClose={() => setShowBookModal(false)} 
           patients={patientList || []}
-          doctors={(allUsers || []).filter(u => u.role_name === 'Provider')}
+          doctors={providers || []}
         />
       )}
 
@@ -344,6 +360,7 @@ const S = {
   // FIX: new style for ID badges — monospace, muted, compact
   idBadge:      { display: 'inline-block', fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#4a5568', background: '#edf2f7', borderRadius: 5, padding: '2px 7px', letterSpacing: 0.3 },
   actionBtn:    { padding: '4px 10px', borderRadius: 6, border: '1px solid #bee3f8', background: '#ebf8ff', color: '#2b6cb0', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  declineBtn:   { padding: '4px 10px', borderRadius: 6, border: '1px solid #fed7d7', background: '#fff5f5', color: '#e53e3e', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   cancelBtn:    { padding: '4px 10px', borderRadius: 6, border: '1px solid #fed7d7', background: '#fff5f5', color: '#c53030', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   notesBtn:     { padding: '4px 10px', borderRadius: 6, border: '1px solid #c6f6d5', background: '#f0fff4', color: '#276749', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   empty:        { textAlign: 'center', padding: '60px 20px', color: '#a0aec0', fontSize: 14 },

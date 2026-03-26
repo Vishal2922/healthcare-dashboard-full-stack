@@ -14,6 +14,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   list: [],
+  allPatients: [],
   selectedPatient: null,
 
   meta: {
@@ -36,6 +37,7 @@ const initialState = {
   listLoading:    false,
   detailLoading:  false,
   formLoading:    false,
+  allPatientsLoading: false,
   prefetchLoading: false,
   prefetched:     false,
 
@@ -84,6 +86,20 @@ const patientSlice = createSlice({
     fetchPatientsFailure: (state, action) => {
       state.listLoading = false;
       state.error       = action.payload;
+    },
+
+    // ── Fetch All (for dropdowns) ───────────────────────────────────────────
+    fetchAllPatientsRequest: (state) => {
+      state.allPatientsLoading = true;
+      state.error = null;
+    },
+    fetchAllPatientsSuccess: (state, action) => {
+      state.allPatients = action.payload;
+      state.allPatientsLoading = false;
+    },
+    fetchAllPatientsFailure: (state, action) => {
+      state.allPatientsLoading = false;
+      state.error = action.payload;
     },
 
     // ── Serve from Cache (instant navigation) ─────────────────────────────────
@@ -232,6 +248,9 @@ export const {
   fetchPatientsRequest,
   fetchPatientsSuccess,
   fetchPatientsFailure,
+  fetchAllPatientsRequest,
+  fetchAllPatientsSuccess,
+  fetchAllPatientsFailure,
   serveFromCache,
   prefetchPageRequest,
   prefetchPageSuccess,
@@ -280,6 +299,8 @@ export const selectPatientPrefetching = (s) => s.patients.prefetching;
 export const selectPatientPageCache   = (s) => s.patients.pageCache;
 export const selectPatientError       = (s) => s.patients.error;
 export const selectPatientSuccess     = (s) => s.patients.successMessage;
+export const selectAllPatients        = (s) => s.patients.allPatients;
+export const selectAllPatientsLoading = (s) => s.patients.allPatientsLoading;
 export const selectPatientOfflineQueue= (s) => s.patients.offlineQueue;
 export const selectPatientIsOnline    = (s) => s.patients.isOnline;
 export const selectPatientIsFlushing  = (s) => s.patients.isFlushing;

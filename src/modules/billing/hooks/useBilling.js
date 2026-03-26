@@ -42,8 +42,9 @@ import { selectUserRole, selectIsAdmin } from '../../auth/selectors';
  *   billingAll   = Admin, Provider, Patient → can READ + update status
  *   adminOnly    = Admin → can DELETE
  */
-const READ_ROLES   = ['Admin', 'Provider', 'Patient'];
-const WRITE_ROLES  = ['Admin', 'Provider'];
+const READ_ROLES   = ['Receptionist', 'Provider', 'Patient'];
+const CREATE_ROLES = ['Receptionist', 'Provider'];
+const PAY_ROLES    = ['Provider', 'Patient'];
 
 /**
  * useBilling() — Module 11: Billing & Payments
@@ -81,7 +82,9 @@ export default function useBilling() {
   const isFlushing     = useSelector(selectBillingIsFlushing);
 
   const hasAccess  = READ_ROLES.includes(userRole);
-  const canWrite   = WRITE_ROLES.includes(userRole);
+  const canCreate  = CREATE_ROLES.includes(userRole);
+  const canPay     = PAY_ROLES.includes(userRole);
+  const canWrite   = canCreate || canPay; // legacy support
   const canDelete  = isAdmin;
 
   // ── Prefetch summary on mount — unconditional, guarded internally ──────────
@@ -110,10 +113,10 @@ export default function useBilling() {
 
   const createInvoice = useCallback(
     (payload) => {
-      if (!canWrite) return;
+      if (!canCreate) return;
       dispatch(createInvoiceRequest(payload));
     },
-    [dispatch, canWrite]
+    [dispatch, canCreate]
   );
 
   const updateInvoiceStatus = useCallback(
@@ -183,6 +186,8 @@ export default function useBilling() {
 
     // RBAC
     accessDenied: false,
+    canCreate,
+    canPay,
     canWrite,
     canDelete,
     userRole,

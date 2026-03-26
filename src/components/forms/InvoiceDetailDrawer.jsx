@@ -93,7 +93,8 @@ export default function InvoiceDetailDrawer({
   open,
   onClose,
   onStatusChange,
-  canWrite      = false,
+  canCreate     = false,
+  canPay        = false,
   formLoading   = false,
   isOnline      = true,
 }) {
@@ -157,7 +158,7 @@ export default function InvoiceDetailDrawer({
 
             {/* Status action buttons */}
             <Space>
-              {canWrite && isPending && isOnline && (
+              {canPay && isPending && isOnline && (
                 <Popconfirm
                   title="Mark this invoice as paid?"
                   onConfirm={() => onStatusChange({ id: invoice.id, status: 'paid' })}
@@ -177,7 +178,7 @@ export default function InvoiceDetailDrawer({
                   </Button>
                 </Popconfirm>
               )}
-              {canWrite && !isCancelled && isOnline && (
+              {canCreate && !isCancelled && isOnline && (
                 <Popconfirm
                   title="Cancel this invoice?"
                   onConfirm={() => onStatusChange({ id: invoice.id, status: 'cancelled' })}

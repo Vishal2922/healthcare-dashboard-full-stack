@@ -384,16 +384,6 @@ export default function PatientList() {
               onClick={() => fetchPatients?.({ page: meta?.page ?? 1 })}
               loading={listLoading ?? false} />
           </Tooltip>
-          {canCreate && (
-            <Button
-              type="primary"
-              icon={<UserAddOutlined />}
-              onClick={handleOpenCreate}
-              style={{ borderRadius: 8, fontWeight: 600 }}
-            >
-              Register Patient
-            </Button>
-          )}
         </Space>
       </PageHeader>
 

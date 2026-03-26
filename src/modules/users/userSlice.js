@@ -24,6 +24,9 @@ const initialState = {
   allUsers: [],
   allUsersLoading: false,
 
+  providers: [],
+  providersLoading: false,
+
   roles:       [],
   departments: [],
 
@@ -66,6 +69,20 @@ const userSlice = createSlice({
     fetchAllUsersFailure: (state, action) => {
       state.allUsersLoading = false;
       state.error           = action.payload;
+    },
+
+    // ── Providers (for patient appointment booking) ───────────────────────────
+    fetchProvidersRequest: (state) => {
+      state.providersLoading = true;
+      state.error            = null;
+    },
+    fetchProvidersSuccess: (state, action) => {
+      state.providers        = action.payload;
+      state.providersLoading = false;
+    },
+    fetchProvidersFailure: (state, action) => {
+      state.providersLoading = false;
+      state.error            = action.payload;
     },
 
     // ── Single Staff Record ───────────────────────────────────────────────────
@@ -171,6 +188,7 @@ const userSlice = createSlice({
 export const {
   fetchUsersRequest,       fetchUsersSuccess,       fetchUsersFailure,
   fetchAllUsersRequest,    fetchAllUsersSuccess,     fetchAllUsersFailure,
+  fetchProvidersRequest,   fetchProvidersSuccess,    fetchProvidersFailure,
   fetchUserRequest,        fetchUserSuccess,         fetchUserFailure,
   createUserRequest,       createUserSuccess,        createUserFailure,
   updateUserRequest,       updateUserSuccess,        updateUserFailure,

@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import useAppointments from '../../modules/appointments/hooks/useAppointments';
+import useAuth from '../../modules/auth/hooks/useAuth';
 import { useTheme } from 'styled-components';
 
 export default function AppointmentForm({ onClose, doctors = [], patients = [] }) {
@@ -14,6 +15,8 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
   });
 
   const theme = useTheme();
+  const { user } = useAuth();
+  const isPatient = user?.role === 'Patient';
   const textColor = theme?.colors?.text || '#1a202c';
   const textSecondary = theme?.colors?.textSecondary || '#4a5568';
   const surfaceBg = theme?.colors?.surface || '#fff';
@@ -44,7 +47,7 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
     e.preventDefault();
     if (conflictCheck.isAvailable === false) return;
     bookAppointment({
-      patient_id:       Number(form.patient_id),
+      patient_id:       isPatient ? 0 : Number(form.patient_id),
       doctor_id:        Number(form.doctor_id),
       appointment_time: form.appointment_time,
       reason:           form.reason || undefined,
@@ -60,7 +63,7 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
   const isSubmitDisabled =
     bookingLoading || conflictCheck.checking ||
     conflictCheck.isAvailable === false ||
-    !form.patient_id || !form.doctor_id || !form.appointment_time;
+    (!isPatient && !form.patient_id) || !form.doctor_id || !form.appointment_time;
 
   return (
     <div style={S.overlay}>
@@ -81,13 +84,15 @@ export default function AppointmentForm({ onClose, doctors = [], patients = [] }
         {bookingError   && <div style={S.errorBanner}>{bookingError}</div>}
 
         <form onSubmit={handleSubmit}>
-          <div style={S.field}>
-            <label style={{ ...S.label, color: textSecondary }} htmlFor="patient_id">Patient *</label>
-            <select id="patient_id" name="patient_id" value={form.patient_id} onChange={handleChange} required style={{ ...S.input, background: inputBg, color: textColor, borderColor }}>
-              <option value="">— Select patient —</option>
-              {patients.map((p) => <option key={p.id} value={p.id}>{p.patient_name || p.name || `#${p.id}`}</option>)}
-            </select>
-          </div>
+          {!isPatient && (
+            <div style={S.field}>
+              <label style={{ ...S.label, color: textSecondary }} htmlFor="patient_id">Patient *</label>
+              <select id="patient_id" name="patient_id" value={form.patient_id} onChange={handleChange} required style={{ ...S.input, background: inputBg, color: textColor, borderColor }}>
+                <option value="">— Select patient —</option>
+                {patients.map((p) => <option key={p.id} value={p.id}>{p.patient_name || p.name || `#${p.id}`}</option>)}
+              </select>
+            </div>
+          )}
 
           <div style={S.field}>
             <label style={{ ...S.label, color: textSecondary }} htmlFor="doctor_id">Doctor *</label>

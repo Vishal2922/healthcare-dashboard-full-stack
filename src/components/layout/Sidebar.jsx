@@ -23,6 +23,7 @@ const ROLES = {
   NURSE:        'Nurse',
   RECEPTIONIST: 'Receptionist',
   PHARMACIST:   'Pharmacist',
+  PATIENT:      'Patient',
 };
 
 const NAV_ITEMS = [
@@ -30,7 +31,7 @@ const NAV_ITEMS = [
     to: '/dashboard',
     label: 'Dashboard',
     Icon: DashboardOutlined,
-    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST, ROLES.NURSE, ROLES.RECEPTIONIST],
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST, ROLES.NURSE, ROLES.RECEPTIONIST, ROLES.PATIENT],
   },
   {
     to: '/patients',
@@ -42,13 +43,13 @@ const NAV_ITEMS = [
     to: '/appointments',
     label: 'Appointments',
     Icon: ScheduleOutlined,
-    roles: [ROLES.PROVIDER, ROLES.NURSE],
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.NURSE, ROLES.PATIENT],
   },
   {
     to: '/appointments/calendar',
     label: 'Calendar',
     Icon: CalendarOutlined,
-    roles: [ROLES.RECEPTIONIST, ROLES.ADMIN],
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.RECEPTIONIST],
   },
   {
     to: '/prescriptions',
@@ -60,13 +61,13 @@ const NAV_ITEMS = [
     to: '/billing',
     label: 'Billing',
     Icon: DollarOutlined,
-    roles: [ROLES.ADMIN],
+    roles: [ROLES.RECEPTIONIST, ROLES.PATIENT],
   },
   {
     to: '/settings/profile',
     label: 'My Profile',
     Icon: IdcardOutlined,
-    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST, ROLES.NURSE, ROLES.RECEPTIONIST],
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST, ROLES.NURSE, ROLES.RECEPTIONIST, ROLES.PATIENT],
   },
   {
     to: '/settings/staff',

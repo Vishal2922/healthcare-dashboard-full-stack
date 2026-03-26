@@ -8,6 +8,12 @@ import {
   PlusOutlined, DeleteOutlined, DisconnectOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchAllPatientsRequest,
+  selectAllPatients,
+  selectAllPatientsLoading,
+} from '../../modules/patients/patientSlice';
 
 const { Title, Text } = Typography;
 const { TextArea }    = Input;
@@ -50,6 +56,10 @@ export default function InvoiceFormDrawer({
   isOnline = true,
 }) {
   const [form]  = Form.useForm();
+  const dispatch = useDispatch();
+  const patients = useSelector(selectAllPatients);
+  const patientsLoading = useSelector(selectAllPatientsLoading);
+
   const [items, setItems] = useState([{ description: '', quantity: 1, unit_price: 0 }]);
   const [taxPercent, setTaxPercent] = useState(0);
 
@@ -58,8 +68,9 @@ export default function InvoiceFormDrawer({
       form.resetFields();
       setItems([{ description: '', quantity: 1, unit_price: 0 }]);
       setTaxPercent(0);
+      dispatch(fetchAllPatientsRequest());
     }
-  }, [open, form]);
+  }, [open, form, dispatch]);
 
   const addItem = () => setItems([...items, { description: '', quantity: 1, unit_price: 0 }]);
 
@@ -162,13 +173,22 @@ export default function InvoiceFormDrawer({
           <Col span={14}>
             <Form.Item
               name="patient_id"
-              label="Patient ID"
-              rules={[
-                { required: true, message: 'Patient ID is required' },
-                { pattern: /^\d+$/, message: 'Must be a number' },
-              ]}
+              label="Patient"
+              rules={[{ required: true, message: 'Please select a patient' }]}
             >
-              <Input placeholder="e.g. 42" />
+              <Select
+                showSearch
+                placeholder="Select patient name"
+                loading={patientsLoading}
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={patients.map(p => ({
+                  value: p.id,
+                  label: p.full_name || p.name
+                }))}
+              />
             </Form.Item>
           </Col>
           <Col span={10}>

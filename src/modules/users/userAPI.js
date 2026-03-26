@@ -26,6 +26,11 @@ export const fetchAllUsersAPI = async (params = {}) => {
   // shape: { message, data: { users: [...], pagination: {...} } }
 };
 
+export const fetchProvidersAPI = async () => {
+  const response = await axiosClient.get('/api/users/providers');
+  return response.data;
+};
+
 // ─── GET /api/staff — Staff list (paginated + filterable) ────────────────────
 export const fetchUsersAPI = async (params = {}) => {
   const response = await axiosClient.get('/api/staff', { params });
@@ -50,6 +55,8 @@ export const createUserAPI = async (data) => {
     password:  data.password,
     full_name: data.full_name,
     role_id:   data.role_id || undefined,
+    dob:       data.dob     || undefined,
+    gender:    data.gender  || undefined,
   });
 
   const registerData = registerResponse.data?.data || registerResponse.data;

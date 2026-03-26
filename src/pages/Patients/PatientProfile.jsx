@@ -12,6 +12,8 @@ import {
 } from '@ant-design/icons';
 
 import usePatients from '../../modules/patients/hooks/usePatients';
+import useAppointments from '../../modules/appointments/hooks/useAppointments';
+import usePrescriptions from '../../modules/prescriptions/hooks/usePrescriptions';
 import PatientFormDrawer from '../../components/forms/PatientFormDrawer';
 import usePermission from '../../hooks/usePermission';
 
@@ -95,11 +97,27 @@ export default function PatientProfile() {
   const dismissError     = pts.accessDenied ? null  : pts.dismissError;
   const dismissSuccess   = pts.accessDenied ? null  : pts.dismissSuccess;
 
+  const {
+    list: appointments,
+    loading: apptsLoading,
+    loadAppointments
+  } = useAppointments();
+
+  const {
+    list: prescriptions,
+    listLoading: rxLoading,
+    fetchPrescriptions
+  } = usePrescriptions();
+
   // useEffect — always unconditional, guard inside
   useEffect(() => {
     if (!fetchPatientById) return; // accessDenied guard
     fetchPatientById(id);
-  }, [id, fetchPatientById]);
+    
+    // Also fetch appointments and prescriptions for this patient
+    loadAppointments({ patient_id: id, page: 1, per_page: 50 });
+    fetchPrescriptions({ patient_id: id, page: 1, per_page: 50 });
+  }, [id, fetchPatientById, loadAppointments, fetchPrescriptions]);
 
   // ── RBAC guard — AFTER all hooks ──────────────────────────────────────────
   if (pts.accessDenied) {
@@ -267,14 +285,14 @@ export default function PatientProfile() {
               children: <PersonalInfoTab patient={patient} />,
             },
             {
-              key: 'medical',
-              label: <Space><MedicineBoxOutlined />Medical History</Space>,
-              children: <MedicalHistoryTab patient={patient} />,
-            },
-            {
               key: 'appointments',
               label: <Space><CalendarOutlined />Appointments</Space>,
-              children: <AppointmentsTab />,
+              children: <AppointmentsTab appointments={appointments} loading={apptsLoading} />,
+            },
+            {
+              key: 'medical',
+              label: <Space><MedicineBoxOutlined />Medical History</Space>,
+              children: <MedicalHistoryTab patient={patient} prescriptions={prescriptions} loading={rxLoading} />,
             },
           ]}
         />
@@ -354,7 +372,7 @@ function PersonalInfoTab({ patient }) {
 }
 
 // ─── Tab: Medical History ─────────────────────────────────────────────────────
-function MedicalHistoryTab({ patient }) {
+function MedicalHistoryTab({ patient, prescriptions, loading }) {
   const fields = [
     { label: 'Known Allergies',     value: patient.allergies },
     { label: 'Chronic Conditions',  value: patient.chronic_conditions },
@@ -363,40 +381,115 @@ function MedicalHistoryTab({ patient }) {
     { label: 'Family History',      value: patient.family_history },
     { label: 'Notes',               value: patient.notes },
   ];
-  const hasAny = fields.some((f) => f.value);
+  const hasFields = fields.some((f) => f.value);
 
-  if (!hasAny) {
+  return (
+    <div style={{ paddingTop: 20 }}>
+      {hasFields && (
+        <Row gutter={24} style={{ marginBottom: 24 }}>
+          {fields.filter((f) => f.value).map((f) => (
+            <Col xs={24} md={12} key={f.label}>
+              <SectionCard size="small" title={f.label}>
+                <Paragraph style={{ margin: 0, fontSize: 13 }}>{f.value}</Paragraph>
+              </SectionCard>
+            </Col>
+          ))}
+        </Row>
+      )}
+
+      <SectionCard title={<Space><MedicineBoxOutlined />Prescription History</Space>}>
+        {loading ? (
+          <Skeleton active />
+        ) : !prescriptions || prescriptions.length === 0 ? (
+          <EmptyState>
+            <MedicineBoxOutlined style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
+            <Text type="secondary">No prescriptions found for this patient.</Text>
+          </EmptyState>
+        ) : (
+          <Row gutter={[16, 16]}>
+            {prescriptions.map((rx) => (
+              <Col xs={24} key={rx.id}>
+                <Card size="small" style={{ borderRadius: 8, background: '#fafafa' }}>
+                  <Row justify="space-between" align="middle">
+                    <Col>
+                      <Text strong style={{ fontSize: 14 }}>{rx.medicine_name_plain || rx.medicine_name}</Text>
+                      <div style={{ fontSize: 12, color: '#666' }}>
+                        {rx.dosage_plain || rx.dosage} • {rx.duration_days} days
+                      </div>
+                    </Col>
+                    <Col style={{ textAlign: 'right' }}>
+                      <Tag color={rx.status === 'dispensed' ? 'success' : 'orange'}>
+                        {rx.status?.toUpperCase()}
+                      </Tag>
+                      <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                        {new Date(rx.created_at).toLocaleDateString()}
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Tab: Appointments ────────────────────────────────────────────────────────
+function AppointmentsTab({ appointments, loading }) {
+  if (loading) return <div style={{ paddingTop: 40 }}><Skeleton active /></div>;
+
+  if (!appointments || appointments.length === 0) {
     return (
-      <EmptyState>
-        <MedicineBoxOutlined style={{ fontSize: 40, marginBottom: 12, display: 'block' }} />
-        <Text type="secondary">No medical history recorded yet.</Text>
+      <EmptyState style={{ paddingTop: 40 }}>
+        <CalendarOutlined style={{ fontSize: 40, marginBottom: 12, display: 'block', color: '#bfbfbf' }} />
+        <Text type="secondary">No appointment history found.</Text>
       </EmptyState>
     );
   }
 
   return (
     <div style={{ paddingTop: 20 }}>
-      <Row gutter={24}>
-        {fields.filter((f) => f.value).map((f) => (
-          <Col xs={24} md={12} key={f.label}>
-            <SectionCard size="small" title={f.label}>
-              <Paragraph style={{ margin: 0 }}>{f.value}</Paragraph>
-            </SectionCard>
+      <Row gutter={[0, 12]}>
+        {appointments.map((appt) => (
+          <Col span={24} key={appt.id}>
+            <Card size="small" style={{ borderRadius: 10, border: '1px solid #f0f0f0' }}>
+              <Row align="middle" gutter={16}>
+                <Col>
+                  <div style={{ 
+                    width: 48, height: 48, borderRadius: 8, 
+                    background: '#f0f5ff', color: '#1890ff',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 700, lineHeight: 1.2
+                  }}>
+                    <span>{new Date(appt.appointment_time).getDate()}</span>
+                    <span style={{ fontSize: 10, textTransform: 'uppercase' }}>
+                      {new Date(appt.appointment_time).toLocaleDateString('en-US', { month: 'short' })}
+                    </span>
+                  </div>
+                </Col>
+                <Col flex={1}>
+                  <Text strong>{appt.doctor_name || `Doctor #${appt.doctor_id}`}</Text>
+                  <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                    {new Date(appt.appointment_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {appt.reason && ` • ${appt.reason}`}
+                  </div>
+                </Col>
+                <Col>
+                  <Tag color={
+                    appt.status === 'completed' ? 'success' :
+                    appt.status === 'cancelled' ? 'error' :
+                    appt.status === 'pending'   ? 'gold' : 'processing'
+                  }>
+                    {appt.status?.toUpperCase()}
+                  </Tag>
+                </Col>
+              </Row>
+            </Card>
           </Col>
         ))}
       </Row>
     </div>
-  );
-}
-
-// ─── Tab: Appointments (placeholder) ─────────────────────────────────────────
-function AppointmentsTab() {
-  return (
-    <EmptyState style={{ paddingTop: 40 }}>
-      <CalendarOutlined style={{ fontSize: 40, marginBottom: 12, display: 'block', color: '#bfbfbf' }} />
-      <Text type="secondary">
-        Appointment history will appear here once the Appointments module is connected.
-      </Text>
-    </EmptyState>
   );
 }

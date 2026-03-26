@@ -45,6 +45,9 @@ import {
   fetchPatientsRequest,
   fetchPatientsSuccess,
   fetchPatientsFailure,
+  fetchAllPatientsRequest,
+  fetchAllPatientsSuccess,
+  fetchAllPatientsFailure,
   serveFromCache,
   prefetchPageRequest,
   prefetchPageSuccess,
@@ -189,6 +192,18 @@ function* handleFetchPatients(action) {
 
   } catch (error) {
     yield put(fetchPatientsFailure(errMsg(error, 'Failed to load patients.')));
+  }
+}
+
+// ── Fetch All Patients (non-paginated) ────────────────────────────────────────
+function* handleFetchAllPatients() {
+  try {
+    const response = yield call(fetchPatientListAPI, { per_page: 1000 });
+    const payload  = response?.data || response;
+    const rawPatients = payload.patients || payload.data || [];
+    yield put(fetchAllPatientsSuccess(rawPatients.map(mapPatient)));
+  } catch (error) {
+    yield put(fetchAllPatientsFailure(errMsg(error, 'Failed to fetch patients.')));
   }
 }
 
@@ -345,6 +360,7 @@ function* handlePrefetchPatientsMeta() {
 export default function* patientSaga() {
   yield all([
     takeLatest(fetchPatientsRequest.type,        handleFetchPatients),
+    takeLatest(fetchAllPatientsRequest.type,     handleFetchAllPatients),
     takeLatest(fetchPatientByIdRequest.type,     handleFetchPatientById),
     takeLatest(createPatientRequest.type,        handleCreatePatient),
     takeLatest(updatePatientRequest.type,        handleUpdatePatient),
