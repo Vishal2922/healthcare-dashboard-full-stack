@@ -9,6 +9,7 @@
  *   if (can('prescriptions', 'create')) { ... }
  *   if (can('patients', 'delete'))      { ... }
  */
+import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { selectUserRole } from '../modules/auth/selectors';
 import { can as canFn } from '../utils/permissions';
@@ -16,7 +17,10 @@ import { can as canFn } from '../utils/permissions';
 export default function usePermission() {
   const role = useSelector(selectUserRole);
 
-  const can = (module, action) => canFn(module, action, role);
+  const can = useCallback(
+    (module, action) => canFn(module, action, role),
+    [role]
+  );
 
   return { can, role };
 }

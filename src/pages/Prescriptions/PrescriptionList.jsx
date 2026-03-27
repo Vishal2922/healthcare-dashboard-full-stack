@@ -153,11 +153,6 @@ export default function PrescriptionList() {
   const { user } = useAuth();
 
   const patientList = useSelector(selectPatientList);
-  useEffect(() => {
-    if (can('patients', 'view')) {
-      dispatch(fetchPatientsRequest({ page: 1, per_page: 200 }));
-    }
-  }, []); // eslint-disable-line
 
   const [drawerOpen,   setDrawerOpen]   = useState(false);
   const [editTarget,   setEditTarget]   = useState(null);
@@ -165,6 +160,22 @@ export default function PrescriptionList() {
   const [statusFilter, setStatusFilter] = useState(null);
 
   const debouncedSearch = useDebounce(searchText, 300);
+
+  useEffect(() => {
+    fetchPrescriptions({
+      page: 1,
+      filters: {
+        search: debouncedSearch || null,
+        status: statusFilter || null,
+      }
+    });
+  }, [debouncedSearch, statusFilter, fetchPrescriptions]);
+
+  useEffect(() => {
+    if (can('patients', 'view')) {
+      dispatch(fetchPatientsRequest({ page: 1, per_page: 200 }));
+    }
+  }, [can, dispatch]);
 
   // ── RBAC flags ─────────────────────────────────────────────────────────────
   const canCreate   = can('prescriptions', 'create');

@@ -102,7 +102,7 @@ function formatDate(d) {
 }
 
 // ─── Build dropdown items ─────────────────────────────────────────────────────
-function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete }) {
+function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete, userRole }) {
   const items = [
     {
       key: 'view',
@@ -124,7 +124,13 @@ function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, 
       key: 'mark-paid',
       icon: <CheckCircleOutlined />,
       label: 'Mark as Paid',
-      onClick: () => onStatusChange({ id: record.id, status: 'paid' }),
+      onClick: () => {
+        const payload = { id: record.id, status: 'paid' };
+        if (userRole === 'Patient') {
+          payload.payment_method = 'other';
+        }
+        onStatusChange(payload);
+      },
     });
   }
 
@@ -164,7 +170,7 @@ function buildMenuItems({ record, onView, onStatusChange, onDelete, onDownload, 
 }
 
 // ─── Table columns ────────────────────────────────────────────────────────────
-function buildColumns({ onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete }) {
+function buildColumns({ onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete, userRole }) {
   return [
     {
       title: 'Invoice #',
@@ -242,7 +248,7 @@ function buildColumns({ onView, onStatusChange, onDelete, onDownload, canCreate,
         <Dropdown
           menu={{
             items: buildMenuItems({
-              record, onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete,
+              record, onView, onStatusChange, onDelete, onDownload, canCreate, canPay, canWrite, canDelete, userRole,
             }),
           }}
           trigger={['click']}
@@ -275,7 +281,7 @@ export default function InvoicePage() {
   const {
     invoiceList, summary, meta, filters, listLoading, formLoading,
     summaryLoading, error, successMessage, isOnline, pendingCount, isFlushing,
-    canCreate, canPay, canWrite, canDelete,
+    canCreate, canPay, canWrite, canDelete, userRole,
     createInvoice, updateInvoiceStatus, deleteInvoice, fetchInvoiceById,
     selectInvoice, clearInvoice, dismissError, dismissSuccess,
   } = billing.accessDenied ? {} : billing;
@@ -368,6 +374,7 @@ export default function InvoicePage() {
     canPay,
     canWrite,
     canDelete,
+    userRole,
   });
 
   return (
@@ -570,6 +577,7 @@ export default function InvoicePage() {
         canPay={canPay}
         formLoading={formLoading}
         isOnline={isOnline}
+        userRole={userRole}
       />
     </PageWrapper>
   );

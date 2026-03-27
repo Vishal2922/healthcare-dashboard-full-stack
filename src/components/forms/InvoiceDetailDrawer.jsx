@@ -97,6 +97,7 @@ export default function InvoiceDetailDrawer({
   canPay        = false,
   formLoading   = false,
   isOnline      = true,
+  userRole      = '',
 }) {
   const theme         = useTheme();
   const invoice       = useSelector(selectSelectedInvoice);
@@ -161,7 +162,13 @@ export default function InvoiceDetailDrawer({
               {canPay && isPending && isOnline && (
                 <Popconfirm
                   title="Mark this invoice as paid?"
-                  onConfirm={() => onStatusChange({ id: invoice.id, status: 'paid' })}
+                  onConfirm={() => {
+                    const payload = { id: invoice.id, status: 'paid' };
+                    if (userRole === 'Patient') {
+                      payload.payment_method = 'other';
+                    }
+                    onStatusChange(payload);
+                  }}
                   okText="Yes, mark paid"
                   cancelText="Cancel"
                 >
