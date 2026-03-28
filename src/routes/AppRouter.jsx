@@ -111,7 +111,7 @@ export default function AppRouter() {
             </Route>
 
             {/* Prescriptions */}
-            <Route element={<RoleBasedRoute roles={['Admin', 'Provider', 'Pharmacist']} />}>
+            <Route element={<RoleBasedRoute roles={['Admin', 'Provider', 'Pharmacist', 'Patient']} />}>
               <Route path="/prescriptions" element={<PrescriptionList />} />
             </Route>
 

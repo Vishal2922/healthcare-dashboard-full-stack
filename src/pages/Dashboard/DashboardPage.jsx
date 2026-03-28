@@ -723,6 +723,13 @@ export default function DashboardPage() {
       accent: T.sky, bg: T.skyL, icon: '💳',
       link: '/billing'
     });
+    overviewKpis.push({
+      label: 'My Prescriptions',
+      value: n(stats?.total_prescriptions),
+      note: `${n(stats?.pending_prescriptions)} pending`,
+      accent: T.gold, bg: T.goldL, icon: '💊',
+      link: '/prescriptions'
+    });
   }
 
 
@@ -1102,15 +1109,15 @@ export default function DashboardPage() {
                       </PanelTitle>
                       <PanelBadge>{recentPrescriptions.length}</PanelBadge>
                     </PanelHead>
-                    <HeadRow $cols="1.8fr 1.6fr 60px 90px">
-                      <Cell $head>Patient</Cell>
+                    <HeadRow $cols={isPatient ? "2.4fr 60px 90px" : "1.8fr 1.6fr 60px 90px"}>
+                      {!isPatient && <Cell $head>Patient</Cell>}
                       <Cell $head>Medicine</Cell>
                       <Cell $head>Days</Cell>
                       <Cell $head>Status</Cell>
                     </HeadRow>
                     {recentPrescriptions.map((p) => (
-                      <Row key={p.id} $cols="1.8fr 1.6fr 60px 90px">
-                        <Cell $bold>{p.patient_name || `#${p.patient_id}`}</Cell>
+                      <Row key={p.id} $cols={isPatient ? "2.4fr 60px 90px" : "1.8fr 1.6fr 60px 90px"}>
+                        {!isPatient && <Cell $bold>{p.patient_name || `#${p.patient_id}`}</Cell>}
                         <Cell $muted style={{ fontSize: 12 }}>{p.medicine_name || '—'}</Cell>
                         <Cell $muted $mono style={{ fontSize: 11 }}>{p.duration_days ?? '—'}d</Cell>
                         <Cell><StatusTag $s={p.status}>{p.status}</StatusTag></Cell>
@@ -1133,19 +1140,19 @@ export default function DashboardPage() {
               </SectionHead>
 
               <WidePanel>
-                <HeadRow $cols="1.4fr 2fr 1fr 1fr 1fr">
+                <HeadRow $cols={isPatient ? "1.4fr 1fr 1fr 1fr" : "1.4fr 2fr 1fr 1fr 1fr"}>
                   <Cell $head>Invoice</Cell>
-                  <Cell $head>Patient</Cell>
+                  {!isPatient && <Cell $head>Patient</Cell>}
                   <Cell $head>Amount</Cell>
                   <Cell $head>Due</Cell>
                   <Cell $head>Status</Cell>
                 </HeadRow>
                 {recentInvoices.map((inv) => (
-                  <Row key={inv.id} $cols="1.4fr 2fr 1fr 1fr 1fr">
+                  <Row key={inv.id} $cols={isPatient ? "1.4fr 1fr 1fr 1fr" : "1.4fr 2fr 1fr 1fr 1fr"}>
                     <Cell $bold $mono style={{ fontSize: 12 }}>
                       {inv.invoice_number || `INV-${String(inv.id).padStart(4, '0')}`}
                     </Cell>
-                    <Cell>{inv.patient_name || '—'}</Cell>
+                    {!isPatient && <Cell>{inv.patient_name || '—'}</Cell>}
                     <Cell $bold style={{ fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
                       {fmt(inv.total_amount ?? inv.amount)}
                     </Cell>
