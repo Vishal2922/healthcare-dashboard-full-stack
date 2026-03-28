@@ -55,7 +55,7 @@ const NAV_ITEMS = [
     to: '/prescriptions',
     label: 'Prescriptions',
     Icon: FileTextOutlined,
-    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST],
+    roles: [ROLES.ADMIN, ROLES.PROVIDER, ROLES.PHARMACIST, ROLES.PATIENT],
   },
   {
     to: '/billing',

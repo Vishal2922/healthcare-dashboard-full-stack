@@ -264,6 +264,7 @@ export default function PrescriptionList() {
     {
       title: 'Patient',
       dataIndex: 'patient_name',
+      hidden: userRole === 'Patient',
       render: (name, rec) => (
         <Text strong style={{ fontSize: 13 }}>
           {name || `Patient #${rec.patient_id}`}
@@ -395,7 +396,9 @@ export default function PrescriptionList() {
         <HeaderLeft>
           <PageIcon><MedicineBoxOutlined /></PageIcon>
           <div>
-            <Title level={4} style={{ margin: 0 }}>Prescriptions</Title>
+            <Title level={4} style={{ margin: 0 }}>
+              {userRole === 'Patient' ? 'My Prescriptions' : 'Prescriptions'}
+            </Title>
             <Text type="secondary" style={{ fontSize: 13 }}>
               {total} total · {pending} pending · {dispensed} dispensed
               {userRole === 'Pharmacist' && (
@@ -484,7 +487,7 @@ export default function PrescriptionList() {
       <TableCard>
         <FilterBar>
           <Search
-            placeholder="Search patient, medicine…"
+            placeholder={userRole === 'Patient' ? "Search medicine…" : "Search patient, medicine…"}
             prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -510,7 +513,7 @@ export default function PrescriptionList() {
         </FilterBar>
 
         <Table
-          columns={columns}
+          columns={columns.filter(c => !c.hidden)}
           dataSource={filteredList}
           rowKey="id"
           loading={listLoading}
